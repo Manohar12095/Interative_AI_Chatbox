@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/((?!assets/|public/|vite.svg|robots.txt).*).*",
+      "destination": "/index.html"
+    }
+  ]
+}

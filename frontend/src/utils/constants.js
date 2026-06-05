@@ -30,7 +30,7 @@ export const SUGGESTED_PROMPTS = [
   { icon: "🌐", text: "Tell me about quantum computing from Wikipedia" },
 ];
 
-export const API_BASE = import.meta.env.VITE_API_BASE || '';  // Uses Vite proxy in development, customizable via env in production
+export const API_BASE = import.meta.env.VITE_API_BASE || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'http://localhost:8000');
 
 export const TOPIC_CATEGORIES = [
   {

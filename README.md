@@ -2,7 +2,7 @@
 
 > **Beyond standard chatbots.** A premium, full-stack agentic AI assistant platform featuring a 3D Spline robot guard login, a suite of 15+ live tools, server-sent events (SSE) streaming, deep file analysis, voice inputs/outputs, multi-theme customization, and a robust offline/local authentication fallback database.
 >
-> Rebranded from APEX. Created by **Manohar (Reversed Creation)**.
+>  Created by **Manohar (Reversed Creation)**.
 
 ---
 

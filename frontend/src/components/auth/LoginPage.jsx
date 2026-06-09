@@ -1,17 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import Spline from '@splinetool/react-spline';
-import { Eye, EyeOff, User, Lock, Mail, Phone, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, User, Lock, Mail, Phone, CheckCircle2, AlertCircle, Loader2, Cpu } from 'lucide-react';
 import { insforge } from '../../utils/insforge';
 
 // Generate particles once so they don't re-render
-const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
+const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
   id: i,
-  size: Math.random() * 4 + 3,
+  size: Math.random() * 3 + 2,
   left: Math.random() * 100,
   top: Math.random() * 100,
-  opacity: Math.random() * 0.4 + 0.4,
-  duration: Math.random() * 12 + 8,
-  delay: Math.random() * 10,
+  opacity: Math.random() * 0.4 + 0.3,
+  duration: Math.random() * 12 + 10,
+  delay: Math.random() * 8,
   color: Math.random() > 0.5 ? '#00f5ff' : '#6c63ff',
 }));
 
@@ -19,54 +18,60 @@ export default function LoginPage({ onLogin }) {
   const [activeTab, setActiveTab] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [guestToast, setGuestToast] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorToast, setErrorToast] = useState(null);
+  const [errorText, setErrorText] = useState(null);
+  const [successText, setSuccessText] = useState(null);
 
   const [formData, setFormData] = useState({
-    identifier: '',
+    email: '',
     password: '',
     name: '',
-    email: '',
     phone: '',
     confirmPassword: '',
   });
 
   useEffect(() => {
-    setTimeout(() => setMounted(true), 100);
+    setMounted(true);
   }, []);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleGuestLogin = () => {
-    setGuestToast(true);
-    setTimeout(() => {
-      setGuestToast(false);
-      if (onLogin) onLogin();
-    }, 2500);
-  };
-
-  const handleSubmit = async () => {
-    setErrorToast(null);
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
+    setErrorText(null);
+    setSuccessText(null);
     setIsLoading(true);
+
+    if (!formData.email) {
+      setErrorText('Please enter your email address.');
+      setIsLoading(false);
+      return;
+    }
+    if (!formData.password) {
+      setErrorText('Please enter your password.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (activeTab === 'login') {
         try {
           const { data, error } = await insforge.auth.signInWithPassword({
-            email: formData.identifier,
+            email: formData.email,
             password: formData.password,
           });
           if (error) throw error;
-          if (data.session && onLogin) onLogin(data.session);
+          if (data.session && onLogin) {
+            onLogin(data.session);
+          }
         } catch (e) {
           if (e.message.includes('Unexpected token') || e.message.includes('not valid JSON') || e.message.includes('Failed to fetch')) {
             // Broken server fallback
             const users = JSON.parse(localStorage.getItem('rahonam_users') || '[]');
-            const user = users.find(u => (u.email === formData.identifier || u.user_metadata.name === formData.identifier) && u.password === formData.password);
+            const user = users.find(u => u.email === formData.email && u.password === formData.password);
             if (!user) throw new Error('Invalid credentials');
             if (onLogin) onLogin({ user: { ...user, isLocal: true } });
           } else {
@@ -77,6 +82,10 @@ export default function LoginPage({ onLogin }) {
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
         }
+        if (formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters long');
+        }
+
         try {
           const { data, error } = await insforge.auth.signUp({
             email: formData.email,
@@ -92,7 +101,7 @@ export default function LoginPage({ onLogin }) {
           if (data.session && onLogin) {
             onLogin(data.session);
           } else {
-            setErrorToast('Registration successful! Please check your email to confirm.');
+            setSuccessText('Registration successful! Please check your email to confirm your account.');
           }
         } catch (e) {
           if (e.message.includes('Unexpected token') || e.message.includes('not valid JSON') || e.message.includes('Failed to fetch')) {
@@ -114,23 +123,20 @@ export default function LoginPage({ onLogin }) {
         }
       }
     } catch (err) {
-      setErrorToast(err.message || 'Authentication failed');
+      setErrorText(err.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const tabs = ['login', 'register', 'guest'];
-  const tabIndex = tabs.indexOf(activeTab);
-
   return (
     <div
-      className="login-page-root relative min-h-screen w-full overflow-x-hidden overflow-y-auto font-rajdhani"
+      className="login-page-root relative min-h-screen w-full flex flex-col md:flex-row overflow-x-hidden font-rajdhani"
       style={{
-        background: 'radial-gradient(ellipse at top, #0a0a2e 0%, #050510 60%, #0d0d1a 100%)',
+        background: 'radial-gradient(ellipse at top, #0a0a25 0%, #04040c 70%, #080812 100%)',
       }}
     >
-      {/* ── Floating Particles ──────────────────── */}
+      {/* Floating Space Particles */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         {PARTICLES.map(p => (
           <div
@@ -151,124 +157,138 @@ export default function LoginPage({ onLogin }) {
         ))}
       </div>
 
-      {/* ── Scan Line ──────────────────────────── */}
+      {/* Futuristic Scanline */}
       <div className="login-scanline" />
 
-      {/* ── Spline Robot — Top Section ──────────── */}
-      <div
-        className="relative w-full overflow-hidden"
-        style={{ height: '45vh', zIndex: 1 }}
-      >
-        <Spline scene="https://prod.spline.design/MyJlQNxotlykGCGr/scene.splinecode" />
-        {/* Bottom fade so robot blends into the card area */}
-        <div
-          className="absolute bottom-0 left-0 right-0 pointer-events-none"
-          style={{
-            height: '120px',
-            background: 'linear-gradient(to top, #050510, transparent)',
-          }}
-        />
+      {/* LEFT/TOP SECTION: Interactive Holographic Neural Core */}
+      <div className="relative w-full md:w-[45%] flex flex-col items-center justify-center py-10 md:py-0 border-b md:border-b-0 md:border-r border-[#00f5ff]/10 bg-black/10 z-10">
+        <div className="relative w-[180px] h-[180px] md:w-[280px] md:h-[280px] flex items-center justify-center">
+          {/* Outer glowing pulsing orb */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#00f5ff]/10 to-[#6c63ff]/10 animate-pulse blur-xl" />
+          
+          {/* Cybernetic Rotating Vector Rings */}
+          <svg className="w-full h-full animate-[spin_25s_linear_infinite]" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="90" fill="none" stroke="url(#cyanGrad)" strokeWidth="1.5" strokeDasharray="30 15 10 15" strokeLinecap="round" />
+            <circle cx="100" cy="100" r="75" fill="none" stroke="url(#purpleGrad)" strokeWidth="1" strokeDasharray="5 10" />
+            <defs>
+              <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#00f5ff" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#00c6ff" stopOpacity="0.2" />
+              </linearGradient>
+              <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#6c63ff" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#7b2fff" stopOpacity="0.1" />
+              </linearGradient>
+            </defs>
+          </svg>
+
+          {/* Inner Counter-Rotating Rings */}
+          <svg className="absolute w-[80%] h-[80%] animate-[spin_15s_linear_infinite_reverse]" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#00f5ff" strokeWidth="0.75" strokeDasharray="15 30 5 15" opacity="0.4" />
+            <circle cx="100" cy="100" r="65" fill="none" stroke="#6c63ff" strokeWidth="1" strokeDasharray="40 10 20 10" opacity="0.6" />
+          </svg>
+
+          {/* Neural Core Icon */}
+          <div className="absolute flex flex-col items-center justify-center animate-pulse">
+            <Cpu size={48} className="text-[#00f5ff] drop-shadow-[0_0_15px_rgba(0,245,255,0.7)]" />
+            <span className="text-[10px] tracking-[4px] text-white/50 font-bold uppercase mt-2">SYS_CORE</span>
+          </div>
+        </div>
+
+        <div className="text-center mt-6 px-6">
+          <h2 className="text-2xl font-bold font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-[#00f5ff] to-[#6c63ff] tracking-wider mb-2">
+            RAHONAM PLATFORM
+          </h2>
+          <p className="text-[12px] text-white/40 tracking-[3px] uppercase font-semibold">
+            SECURE INTELLECT PORTAL
+          </p>
+        </div>
+
+        {/* Developer attribution in subtle style */}
+        <div className="absolute bottom-4 text-[11px] text-white/20 tracking-[1px] uppercase hidden md:block">
+          REVERSED CREATION BY MANOHAR
+        </div>
       </div>
 
-      {/* ── Login Card — Below Robot ───────────── */}
-      <div className="relative flex justify-center px-4 pb-12" style={{ zIndex: 10, marginTop: '-40px' }}>
+      {/* RIGHT/BOTTOM SECTION: Centered Login Form Card */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 z-10">
         <div
-          className={`login-card w-full max-w-[420px] p-8 rounded-3xl ${mounted ? 'login-card-enter' : 'opacity-0'}`}
+          className={`login-card w-full max-w-[430px] p-8 md:p-10 rounded-3xl ${
+            mounted ? 'login-card-enter' : 'opacity-0'
+          }`}
         >
-          {/* ── Brand Title ──────────────────────── */}
-          <h1 className="login-title text-center text-3xl font-bold font-orbitron mb-1">
-            RAHONAM
-          </h1>
-          <p className="login-subtitle text-center text-[11px] font-semibold tracking-[4px] uppercase mb-8 font-rajdhani">
-            NEURAL ACCESS PORTAL
-          </p>
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-[#00f5ff] to-[#6c63ff] mb-1">
+              SYSTEM ACCESS
+            </h1>
+            <p className="text-[10px] font-bold tracking-[4px] text-[#00f5ff]/60 uppercase font-rajdhani">
+              SECURE GRID SIGN-IN
+            </p>
+          </div>
 
-          {/* ── Tab Switcher ─────────────────────── */}
-          <div className="login-tab-container relative flex w-full mb-7 rounded-full p-1">
-            {/* Sliding pill indicator */}
+          {/* Tab Switcher (Sign In / Register) */}
+          <div className="login-tab-container relative flex w-full mb-8 rounded-full p-1">
             <div
               className="login-tab-indicator absolute top-1 bottom-1 rounded-full"
               style={{
-                width: 'calc(33.333% - 4px)',
-                transform: `translateX(calc(${tabIndex * 100}% + ${tabIndex * 4}px))`,
+                width: 'calc(50% - 4px)',
+                transform: `translateX(${activeTab === 'login' ? '0' : 'calc(100% + 4px)'})`,
               }}
             />
-            {tabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`login-tab-btn flex-1 relative z-10 py-2 text-[14px] font-semibold tracking-wide capitalize transition-colors duration-200 ${
-                  activeTab === tab ? 'text-white' : 'text-white/40 hover:text-white/70'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+            <button
+              onClick={() => {
+                setActiveTab('login');
+                setErrorText(null);
+                setSuccessText(null);
+              }}
+              className={`flex-1 relative z-10 py-2.5 text-[13px] font-orbitron font-bold tracking-[2px] uppercase transition-colors duration-200 ${
+                activeTab === 'login' ? 'text-white' : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('register');
+                setErrorText(null);
+                setSuccessText(null);
+              }}
+              className={`flex-1 relative z-10 py-2.5 text-[13px] font-orbitron font-bold tracking-[2px] uppercase transition-colors duration-200 ${
+                activeTab === 'register' ? 'text-white' : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              Register
+            </button>
           </div>
 
-          {/* ── Tab Content ──────────────────────── */}
-          <div className="min-h-[280px]">
+          {/* Status Notifications */}
+          {errorText && (
+            <div className="mb-6 p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-start gap-3 animate-fade-in">
+              <AlertCircle size={18} className="text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-200/90 font-medium leading-relaxed">{errorText}</p>
+            </div>
+          )}
 
-            {/* ─── LOGIN ───────────────────────── */}
-            {activeTab === 'login' && (
-              <div className="space-y-5 login-tab-fade">
-                {/* Identifier */}
-                <div className="space-y-1.5">
-                  <label className="login-label">IDENTIFIER</label>
-                  <div className="relative">
-                    <User size={16} className="login-input-icon" />
-                    <input
-                      type="text"
-                      value={formData.identifier}
-                      onChange={e => updateField('identifier', e.target.value)}
-                      placeholder="Email / Username / Phone"
-                      className="login-input pl-10 pr-4"
-                    />
-                  </div>
-                </div>
+          {successText && (
+            <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-start gap-3 animate-fade-in">
+              <CheckCircle2 size={18} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-emerald-200/90 font-medium leading-relaxed">{successText}</p>
+            </div>
+          )}
 
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <label className="login-label">PASSWORD</label>
-                  <div className="relative">
-                    <Lock size={16} className="login-input-icon" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={e => updateField('password', e.target.value)}
-                      placeholder="••••••••"
-                      className="login-input pl-10 pr-11 tracking-widest"
-                    />
-                    <button
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="login-eye-btn"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                  <div className="text-right pt-1">
-                    <button className="text-[12px] text-[#6c63ff] hover:underline transition-colors font-medium">
-                      Forgot Password?
-                    </button>
-                  </div>
-                </div>
-
-                <button onClick={handleSubmit} disabled={isLoading} className="login-primary-btn mt-3 opacity-90 hover:opacity-100 disabled:opacity-50">
-                  {isLoading ? <Loader2 size={18} className="animate-spin text-white" /> : <span className="font-orbitron text-[13px] font-bold tracking-[3px]">ACCESS SYSTEM</span>}
-                </button>
-              </div>
-            )}
-
-            {/* ─── REGISTER ────────────────────── */}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* REGISTER TAB EXTRA FIELDS */}
             {activeTab === 'register' && (
-              <div className="space-y-4 login-tab-fade">
-                {/* Full Name */}
+              <>
                 <div className="space-y-1.5">
-                  <label className="login-label">FULL NAME</label>
+                  <label className="login-label">Full Name</label>
                   <div className="relative">
                     <User size={16} className="login-input-icon" />
                     <input
                       type="text"
+                      required
                       value={formData.name}
                       onChange={e => updateField('name', e.target.value)}
                       placeholder="Your full name"
@@ -276,120 +296,114 @@ export default function LoginPage({ onLogin }) {
                     />
                   </div>
                 </div>
-                {/* Email */}
+
                 <div className="space-y-1.5">
-                  <label className="login-label">EMAIL</label>
-                  <div className="relative">
-                    <Mail size={16} className="login-input-icon" />
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={e => updateField('email', e.target.value)}
-                      placeholder="you@example.com"
-                      className="login-input pl-10 pr-4"
-                    />
-                  </div>
-                </div>
-                {/* Phone */}
-                <div className="space-y-1.5">
-                  <label className="login-label">PHONE NUMBER</label>
+                  <label className="login-label">Phone Number</label>
                   <div className="relative">
                     <Phone size={16} className="login-input-icon" />
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={e => updateField('phone', e.target.value)}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="Your phone number (optional)"
                       className="login-input pl-10 pr-4"
                     />
                   </div>
                 </div>
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <label className="login-label">PASSWORD</label>
-                  <div className="relative">
-                    <Lock size={16} className="login-input-icon" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={e => updateField('password', e.target.value)}
-                      placeholder="Create password"
-                      className="login-input pl-10 pr-11"
-                    />
-                    <button onClick={() => setShowPassword(!showPassword)} className="login-eye-btn">
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                {/* Confirm Password */}
-                <div className="space-y-1.5">
-                  <label className="login-label">CONFIRM PASSWORD</label>
-                  <div className="relative">
-                    <Lock size={16} className="login-input-icon" />
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={formData.confirmPassword}
-                      onChange={e => updateField('confirmPassword', e.target.value)}
-                      placeholder="Re-enter password"
-                      className="login-input pl-10 pr-11"
-                    />
-                    <button onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="login-eye-btn">
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
+              </>
+            )}
 
-                <button onClick={handleSubmit} disabled={isLoading} className="login-primary-btn mt-3 opacity-90 hover:opacity-100 disabled:opacity-50">
-                  {isLoading ? <Loader2 size={18} className="animate-spin text-white" /> : <span className="font-orbitron text-[13px] font-bold tracking-[3px]">INITIALIZE ACCOUNT</span>}
+            {/* Email Field (Used for both tabs) */}
+            <div className="space-y-1.5">
+              <label className="login-label">Email Address</label>
+              <div className="relative">
+                <Mail size={16} className="login-input-icon" />
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={e => updateField('email', e.target.value)}
+                  placeholder="you@example.com"
+                  className="login-input pl-10 pr-4"
+                />
+              </div>
+            </div>
+
+            {/* Password Field (Used for both tabs) */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="login-label">Password</label>
+                {activeTab === 'login' && (
+                  <button
+                    type="button"
+                    className="text-[11px] text-[#00f5ff]/70 hover:text-[#00f5ff] transition-colors font-semibold tracking-wider uppercase"
+                  >
+                    Forgot?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Lock size={16} className="login-input-icon" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={formData.password}
+                  onChange={e => updateField('password', e.target.value)}
+                  placeholder="••••••••"
+                  className="login-input pl-10 pr-11 tracking-widest"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="login-eye-btn"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
+              </div>
+            </div>
+
+            {/* Confirm Password (Register tab only) */}
+            {activeTab === 'register' && (
+              <div className="space-y-1.5">
+                <label className="login-label">Confirm Password</label>
+                <div className="relative">
+                  <Lock size={16} className="login-input-icon" />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={formData.confirmPassword}
+                    onChange={e => updateField('confirmPassword', e.target.value)}
+                    placeholder="••••••••"
+                    className="login-input pl-10 pr-11 tracking-widest"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="login-eye-btn"
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* ─── GUEST ───────────────────────── */}
-            {activeTab === 'guest' && (
-              <div className="flex flex-col items-center justify-center py-6 space-y-5 login-tab-fade">
-                <div className="text-[64px] leading-none login-guest-icon">👾</div>
-
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl font-bold text-[#00f5ff] font-orbitron tracking-wide login-title-glow">
-                    ANONYMOUS ACCESS
-                  </h3>
-                  <p className="text-[14px] text-white/50 font-rajdhani font-medium">
-                    No credentials required. Limited system access.
-                  </p>
-                </div>
-
-                {/* Divider */}
-                <div className="flex items-center gap-3 w-full px-4">
-                  <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-[10px] text-white/30 uppercase tracking-[3px] font-semibold">or enter the grid</span>
-                  <div className="flex-1 h-px bg-white/10" />
-                </div>
-
-                <button onClick={handleGuestLogin} className="login-ghost-btn w-full">
-                  <span className="font-orbitron text-[13px] font-bold tracking-[3px]">ENTER AS GHOST</span>
-                </button>
-              </div>
-            )}
-          </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="login-primary-btn mt-6 opacity-90 hover:opacity-100 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <Loader2 size={18} className="animate-spin text-white" />
+              ) : (
+                <span className="font-orbitron text-[13px] font-bold tracking-[3px] uppercase">
+                  {activeTab === 'login' ? 'Access System' : 'Initialize Account'}
+                </span>
+              )}
+            </button>
+          </form>
         </div>
       </div>
-
-      {/* ── Guest Toast ────────────────────────── */}
-      {guestToast && (
-        <div className="login-toast fixed bottom-8 left-1/2 z-50">
-          <CheckCircle2 size={18} className="text-[#00f5ff] flex-shrink-0" />
-          <span className="text-white/90 font-medium tracking-wide text-[14px]">👾 Ghost Mode Activated</span>
-        </div>
-      )}
-
-      {/* ── Error Toast ────────────────────────── */}
-      {errorToast && (
-        <div className="login-toast fixed bottom-8 left-1/2 z-50 !border-[#FF4560]/40 !shadow-[0_0_24px_rgba(255,69,96,0.15)]">
-          <AlertCircle size={18} className="text-[#FF4560] flex-shrink-0" />
-          <span className="text-white/90 font-medium tracking-wide text-[14px]">{errorToast}</span>
-        </div>
-      )}
     </div>
   );
 }

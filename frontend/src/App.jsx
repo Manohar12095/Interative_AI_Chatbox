@@ -416,7 +416,7 @@ export default function App() {
       {sidebarOpen && window.innerWidth <= 768 && (
         <div className="fixed inset-0 bg-black/50 z-40 transition-opacity animate-fade-in" onClick={() => setSidebarOpen(false)} />
       )}
-      
+
       {/* Mobile tools panel overlay */}
       {toolsPanelOpen && window.innerWidth <= 768 && (
         <div className="fixed inset-0 bg-black/50 z-40 transition-opacity animate-fade-in" onClick={() => setToolsPanelOpen(false)} />
@@ -440,8 +440,13 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Area */}
-      <div className="flex flex-col flex-1 min-w-0">
+      {/* Main Area — flex-1 + min-w-0 ensures it fills all remaining space
+           between the sidebar and the tools panel, and shrinks/grows
+           smoothly as panels open / close.                              */}
+      <div
+        className="flex flex-col min-w-0 overflow-hidden"
+        style={{ flex: '1 1 0%', transition: 'width 0.3s ease' }}
+      >
         <TopBar
           sessionName={activeSessionName}
           onRenameSession={(name) => activeSessionId && handleRenameSession(activeSessionId, name)}
@@ -458,6 +463,8 @@ export default function App() {
           messages={messages}
           isStreaming={isStreaming}
           onSuggestedPrompt={(text) => handleSend(text)}
+          sidebarOpen={sidebarOpen}
+          toolsPanelOpen={toolsPanelOpen}
         />
 
         <InputBar

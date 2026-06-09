@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Mic, X, FileText, StopCircle } from 'lucide-react';
+import { Send, Paperclip, Mic, X, FileText, StopCircle, Sparkles } from 'lucide-react';
 
 export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFile, onRemoveFile, addToast }) {
   const [text, setText] = useState('');
@@ -95,12 +95,11 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
     };
 
     recognition.onend = () => {
-      // Auto-restart to keep mic open during natural pauses
       if (shouldRestartRef.current && isRecordingRef.current) {
         try {
           setTimeout(() => {
             if (shouldRestartRef.current && isRecordingRef.current) {
-              startRecognitionInstance(); // Create a fresh instance for reliability
+              startRecognitionInstance();
             }
           }, 100);
         } catch (_) {}
@@ -131,11 +130,9 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
       addToast('Speech recognition is not supported. Please use Chrome or Edge.', 'error');
       return;
     }
-
-    // Request mic permission explicitly first for a clearer UX
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop()); // Release the test stream
+      stream.getTracks().forEach(t => t.stop());
     } catch (err) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         addToast('Microphone permission denied. Check your browser site settings.', 'error');
@@ -144,7 +141,6 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
       }
       return;
     }
-
     startRecognitionInstance();
   };
 
@@ -152,20 +148,16 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
     shouldRestartRef.current = false;
     isRecordingRef.current = false;
     setIsRecording(false);
-    
-    // Save any pending interim text
     if (interimTextRef.current) {
       setText(prev => {
         const trimmed = prev.trimEnd();
         return (trimmed ? trimmed + ' ' : '') + interimTextRef.current + ' ';
       });
     }
-    
     setInterimText('');
     interimTextRef.current = '';
-    
     try {
-      recognitionRef.current?.stop(); // Use stop instead of abort to process final results
+      recognitionRef.current?.stop();
     } catch (_) {}
   };
 
@@ -180,27 +172,33 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
   const canSend = (text.trim() || attachedFile) && !isStreaming;
 
   return (
-    <div style={{ background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-subtle)', padding: '14px 20px' }}>
-      <div className="max-w-4xl mx-auto">
-        {/* Disclaimer */}
-        <p className="text-center text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
-          RAHONAM can make mistakes. Verify important information.
-        </p>
+    <div
+      style={{
+        background: 'var(--bg-secondary)',
+        borderTop: '1px solid var(--border-subtle)',
+        padding: '12px 20px 16px',
+      }}
+    >
+      <div className="w-full mx-auto" style={{ maxWidth: '760px' }}>
 
         {/* Attached file chip */}
         {attachedFile && (
           <div className="flex items-center gap-2 mb-2 animate-fade-slide-up">
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px]"
-              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+              style={{ background: 'var(--brand-primary-light)', border: '1px solid var(--border-glass)', color: 'var(--accent)' }}
             >
-              <FileText size={14} />
-              <span className="truncate max-w-[200px]">{attachedFile.name}</span>
+              <FileText size={13} />
+              <span className="truncate max-w-[200px] font-medium">{attachedFile.name}</span>
               <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                 ({(attachedFile.size / 1024).toFixed(1)} KB)
               </span>
-              <button onClick={onRemoveFile} className="p-0.5 rounded hover:bg-white/10">
-                <X size={12} />
+              <button
+                onClick={onRemoveFile}
+                className="p-0.5 rounded hover:bg-white/20 transition-colors"
+                style={{ color: 'var(--accent)' }}
+              >
+                <X size={11} />
               </button>
             </div>
           </div>
@@ -209,11 +207,11 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
         {/* Recording status bar */}
         {isRecording && (
           <div
-            className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg animate-fade-slide-up"
-            style={{ background: 'rgba(255,69,96,0.08)', border: '1px solid rgba(255,69,96,0.2)' }}
+            className="flex items-center gap-2 mb-2 px-3 py-2 rounded-xl animate-fade-slide-up"
+            style={{ background: 'rgba(255,69,96,0.08)', border: '1px solid rgba(255,69,96,0.25)' }}
           >
-            <div className="w-2.5 h-2.5 rounded-full bg-[#FF4560] animate-record-pulse flex-shrink-0" />
-            <span className="text-[12px] font-medium" style={{ color: '#FF4560' }}>Listening…</span>
+            <div className="w-2 h-2 rounded-full bg-[#FF4560] animate-record-pulse flex-shrink-0" />
+            <span className="text-[12px] font-semibold" style={{ color: '#FF4560' }}>Listening</span>
             {interimText && (
               <span className="text-[12px] italic truncate flex-1" style={{ color: 'var(--text-muted)' }}>
                 "{interimText}"
@@ -221,114 +219,138 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
             )}
             <button
               onClick={stopRecording}
-              className="ml-auto text-[11px] px-2 py-0.5 rounded-md border border-[#FF4560]/40 text-[#FF4560] hover:bg-[#FF4560]/10 transition-colors flex-shrink-0"
+              className="ml-auto text-[11px] px-2.5 py-1 rounded-lg font-medium transition-all flex-shrink-0"
+              style={{ border: '1px solid rgba(255,69,96,0.5)', color: '#FF4560' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,69,96,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               Stop
             </button>
           </div>
         )}
 
-        {/* Input container */}
+        {/* Main Input container */}
         <div
-          className="flex items-end gap-2 px-4 py-3 transition-all"
+          className="transition-all"
           style={{
             background: 'var(--bg-card)',
-            border: isFocused ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-            borderRadius: '14px',
-            boxShadow: isFocused ? '0 0 0 3px var(--brand-primary-light)' : 'none',
-            outline: isRecording ? '1px solid rgba(255,69,96,0.3)' : 'none',
+            border: isFocused
+              ? '1px solid var(--accent)'
+              : isRecording
+              ? '1px solid rgba(255,69,96,0.4)'
+              : '1px solid var(--border-subtle)',
+            borderRadius: '16px',
+            boxShadow: isFocused
+              ? '0 0 0 3px var(--brand-primary-light), 0 4px 20px rgba(0,0,0,0.2)'
+              : '0 2px 12px rgba(0,0,0,0.1)',
           }}
         >
-          {/* File attach */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 rounded-lg transition-colors flex-shrink-0"
-            title="Attach file"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+          {/* Textarea row */}
+          <div className="flex items-end gap-2 px-4 pt-3 pb-2">
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder={isRecording ? 'Speak now — transcription appears here…' : 'Ask RAHONAM anything...'}
+              rows={1}
+              className="flex-1 bg-transparent outline-none resize-none text-[14px] py-1 min-h-[34px]"
+              style={{
+                color: 'var(--text-primary)',
+                maxHeight: '160px',
+                lineHeight: '1.6',
+              }}
+              id="chat-input"
+            />
+            {/* Character counter */}
+            {text.length > 500 && (
+              <span
+                className="text-[10px] flex-shrink-0 self-end pb-1.5"
+                style={{ color: text.length > 4000 ? '#FF4560' : 'var(--text-muted)' }}
+              >
+                {text.length}
+              </span>
+            )}
+          </div>
+
+          {/* Bottom toolbar row */}
+          <div
+            className="flex items-center justify-between px-3 pb-2.5 pt-1"
+            style={{ borderTop: '1px solid var(--border-subtle)' }}
           >
-            <Paperclip size={20} />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileSelect}
-            accept="image/*,audio/*,video/*,.pdf,.docx,.xlsx,.csv,.txt,.py,.js,.json"
-          />
+            {/* Left tools */}
+            <div className="flex items-center gap-0.5">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileSelect}
+                accept="image/*,audio/*,video/*,.pdf,.docx,.xlsx,.csv,.txt,.py,.js,.json"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+                title="Attach file"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+              >
+                <Paperclip size={14} />
+                <span className="hidden sm:inline">Attach</span>
+              </button>
+              <button
+                onClick={toggleRecording}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                  isRecording ? 'ring-1 ring-[#FF4560]/40' : ''
+                }`}
+                title={isRecording ? 'Stop voice input' : 'Voice input'}
+                style={{
+                  color: isRecording ? '#FF4560' : 'var(--text-muted)',
+                  background: isRecording ? 'rgba(255,69,96,0.1)' : 'transparent',
+                }}
+                onMouseEnter={e => { if (!isRecording) { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+                onMouseLeave={e => { if (!isRecording) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; } }}
+              >
+                {isRecording
+                  ? <StopCircle size={14} className="animate-pulse" />
+                  : <Mic size={14} />
+                }
+                <span className="hidden sm:inline">{isRecording ? 'Stop' : 'Voice'}</span>
+              </button>
+            </div>
 
-          {/* Voice button */}
-          <button
-            onClick={toggleRecording}
-            className={`p-2 rounded-lg transition-all flex-shrink-0 ${
-              isRecording
-                ? 'bg-[#FF4560]/20 ring-1 ring-[#FF4560]/50'
-                : ''
-            }`}
-            title={isRecording ? 'Stop voice input' : 'Start voice input'}
-            style={{ color: isRecording ? '#FF4560' : 'var(--text-muted)' }}
-            onMouseEnter={e => { if (!isRecording) e.currentTarget.style.color = 'var(--accent)'; }}
-            onMouseLeave={e => { if (!isRecording) e.currentTarget.style.color = 'var(--text-muted)'; }}
-          >
-            {isRecording
-              ? <StopCircle size={20} className="animate-pulse" />
-              : <Mic size={20} />
-            }
-          </button>
-
-          {/* Separator */}
-          <div className="self-center flex-shrink-0" style={{ width: '1px', height: '20px', background: 'var(--border-subtle)' }} />
-
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder={isRecording ? 'Speak now — transcription appears here…' : 'Ask RAHONAM anything...'}
-            rows={1}
-            className="flex-1 bg-transparent outline-none resize-none text-[14px] py-2 min-h-[36px]"
-            style={{
-              color: 'var(--text-primary)',
-              maxHeight: '160px',
-              fontStyle: text ? 'normal' : 'italic',
-            }}
-            id="chat-input"
-          />
-
-          {/* Character counter */}
-          {text.length > 500 && (
-            <span className="text-[10px] flex-shrink-0 self-end pb-2" style={{ color: text.length > 4000 ? '#FF4560' : 'var(--text-muted)' }}>
-              {text.length}
-            </span>
-          )}
-
-          {/* Send button */}
-          <button
-            onClick={handleSend}
-            disabled={!canSend}
-            className={`flex-shrink-0 flex items-center justify-center transition-all ${
-              canSend
-                ? 'hover:scale-105 active:scale-95 send-btn-active'
-                : 'cursor-not-allowed'
-            } ${isStreaming ? 'animate-send-pulse' : ''}`}
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              background: canSend ? 'var(--accent-gradient)' : 'var(--border-subtle)',
-              color: 'white',
-              opacity: canSend ? 1 : 0.3,
-              boxShadow: canSend ? '0 0 16px var(--accent-glow)' : 'none',
-            }}
-            id="send-btn"
-          >
-            <Send size={16} />
-          </button>
+            {/* Right — hint + send */}
+            <div className="flex items-center gap-2.5">
+              <span className="hidden md:block text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                Enter to send · Shift+Enter for new line
+              </span>
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-semibold text-[12px] transition-all ${
+                  canSend ? 'hover:scale-105 active:scale-95' : 'cursor-not-allowed'
+                } ${isStreaming ? 'animate-send-pulse' : ''}`}
+                style={{
+                  background: canSend ? 'var(--accent-gradient)' : 'var(--border-subtle)',
+                  color: 'white',
+                  opacity: canSend ? 1 : 0.4,
+                  boxShadow: canSend ? '0 4px 16px var(--accent-glow)' : 'none',
+                }}
+                id="send-btn"
+              >
+                <Send size={13} />
+                <span>Send</span>
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Disclaimer */}
+        <p className="text-center text-[10px] mt-2" style={{ color: 'var(--text-dim, var(--text-muted))' }}>
+          RAHONAM may make mistakes. Verify important information.
+        </p>
       </div>
     </div>
   );

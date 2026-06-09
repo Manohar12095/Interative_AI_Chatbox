@@ -1,5 +1,6 @@
 /* ── Google Fonts ─────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
@@ -15,12 +16,12 @@
   --bg-card: #0F1623;
   --bg-card-hover: #131D2E;
   --bg-glass: rgba(10, 15, 26, 0.85);
-  --border-glass: #1C2A40;
+  --border-glass: rgba(28, 42, 64, 0.8);
   --border-subtle: #1C2A40;
 
   --accent: #00C6FF;
   --accent-hover: #00A8DB;
-  --accent-glow: rgba(0, 198, 255, 0.08);
+  --accent-glow: rgba(0, 198, 255, 0.15);
   --accent-gradient: linear-gradient(135deg, #00C6FF, #7B2FFF);
   --brand-primary: #00C6FF;
   --brand-primary-light: rgba(0, 198, 255, 0.08);
@@ -30,7 +31,7 @@
   --text-primary: #F0F4FF;
   --text-secondary: #CBD5E1;
   --text-muted: #5A7090;
-  --text-dim: #3A5070;
+  --text-dim: #2A3A50;
 
   --user-bubble: #131D2E;
   --ai-bubble: transparent;
@@ -39,8 +40,8 @@
   --warning: #f59e0b;
   --error: #FF4560;
 
-  --sidebar-width: 260px;
-  --tools-panel-width: 300px;
+  --sidebar-width: 280px;
+  --tools-panel-width: 290px;
 
   --font-heading: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -50,8 +51,9 @@
   --radius-pill: 999px;
   --radius-input: 10px;
 
-  --shadow-active: 0 0 24px rgba(0, 198, 255, 0.08);
-  --shadow-glow: 0 0 20px rgba(0, 198, 255, 0.3);
+  --shadow-active: 0 0 24px rgba(0, 198, 255, 0.1);
+  --shadow-glow: 0 4px 24px rgba(0, 198, 255, 0.35);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="light"] {
@@ -205,28 +207,30 @@
 }
 
 /* ── Base ──────────────────────────────────── */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-html, body, #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
 
-body {
-  font-family: var(--font-body);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
 }
 
 /* ── Scrollbar ────────────────────────────── */
@@ -417,14 +421,29 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Tool Card ────────────────────────────── */
 .tool-card {
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: var(--radius-input);
 }
 .tool-card:hover {
+  background: var(--bg-card-hover) !important;
+  box-shadow: 0 4px 20px rgba(0, 198, 255, 0.1);
+  border-color: rgba(0, 198, 255, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+/* ── Button base ─────────────────────────── */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+.btn-icon:hover {
   background: var(--bg-card-hover);
-  box-shadow: 0 0 24px rgba(0, 198, 255, 0.08);
-  border-color: rgba(0, 198, 255, 0.15);
-  transform: translateY(-2px);
 }
 
 /* ── Code Blocks ──────────────────────────── */
@@ -565,7 +584,24 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  display: inline;
 }
+
+/* ── Surface elevation ───────────────────── */
+.surface-1 { background: var(--bg-secondary); }
+.surface-2 { background: var(--bg-tertiary); }
+.surface-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); }
+
+/* ── Status dot ──────────────────────────── */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status-dot.active { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.status-dot.inactive { background: var(--text-muted); }
 
 /* ── Shimmer button hover effect ─────────── */
 .shimmer-btn {
@@ -630,7 +666,6 @@ h1, h2, h3, h4, h5, h6 {
 /* ══════════════════════════════════════════════════════════════
    ── RAHONAM Login Page — Space-Tech Noir ──────────────────
    ══════════════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 /* ── Fonts ───────────────────────────────── */
 .font-orbitron { font-family: 'Orbitron', sans-serif; }

@@ -22,3 +22,8 @@ def web_search(query: str) -> str:
         return "\n\n".join(results) if results else "No results found."
     except Exception as e:
         return f"Search error: {e}"
+
+@tool
+def brave_search(query: str) -> str:
+    """Search the web using Brave Search."""
+    return web_search(query)

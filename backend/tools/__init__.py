@@ -3,7 +3,7 @@ APEX Tools Package
 All 15 tools available to the AI agent.
 """
 from .weather import get_weather
-from .search import web_search
+from .search import web_search, brave_search
 from .news import get_news
 from .calculator import calculator
 from .wikipedia_tool import wikipedia_search
@@ -22,7 +22,7 @@ from .gmaps import get_maps_location
 from .app_search import search_app_links
 
 ALL_TOOLS = [
-    get_weather, web_search, get_news, calculator, wikipedia_search,
+    get_weather, web_search, brave_search, get_news, calculator, wikipedia_search,
     convert_currency, get_stock_price, generate_qr_code, get_datetime,
     translate_text, get_joke_or_trivia, explain_code, summarise_text,
     define_word, get_ip_info, crypto_price, get_maps_location, search_app_links
@@ -31,6 +31,7 @@ ALL_TOOLS = [
 TOOL_METADATA = [
     {"id": "get_weather", "name": "Weather", "icon": "🌦", "description": "Get real-time weather for any city", "category": "info"},
     {"id": "web_search", "name": "Web Search", "icon": "🔍", "description": "Search the internet for any topic", "category": "search"},
+    {"id": "brave_search", "name": "Web Search", "icon": "🔍", "description": "Search the web using Brave Search", "category": "search"},
     {"id": "get_news", "name": "News", "icon": "📰", "description": "Fetch latest news headlines", "category": "search"},
     {"id": "calculator", "name": "Calculator", "icon": "🧮", "description": "Evaluate math, algebra, calculus", "category": "utility"},
     {"id": "wikipedia_search", "name": "Wikipedia", "icon": "🌐", "description": "Get Wikipedia article summaries", "category": "search"},

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, User, Lock, Mail, Phone, CheckCircle2, AlertCircle, Loader2, Cpu } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, Mail, Phone, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import Spline from '@splinetool/react-spline';
 import { insforge } from '../../utils/insforge';
 
 // Generate particles once so they don't re-render
@@ -160,42 +161,16 @@ export default function LoginPage({ onLogin }) {
       {/* Futuristic Scanline */}
       <div className="login-scanline" />
 
-      {/* LEFT/TOP SECTION: Interactive Holographic Neural Core */}
-      <div className="relative w-full md:w-[45%] flex flex-col items-center justify-center py-10 md:py-0 border-b md:border-b-0 md:border-r border-[#00f5ff]/10 bg-black/10 z-10">
-        <div className="relative w-[180px] h-[180px] md:w-[280px] md:h-[280px] flex items-center justify-center">
-          {/* Outer glowing pulsing orb */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#00f5ff]/10 to-[#6c63ff]/10 animate-pulse blur-xl" />
-          
-          {/* Cybernetic Rotating Vector Rings */}
-          <svg className="w-full h-full animate-[spin_25s_linear_infinite]" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="90" fill="none" stroke="url(#cyanGrad)" strokeWidth="1.5" strokeDasharray="30 15 10 15" strokeLinecap="round" />
-            <circle cx="100" cy="100" r="75" fill="none" stroke="url(#purpleGrad)" strokeWidth="1" strokeDasharray="5 10" />
-            <defs>
-              <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#00f5ff" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#00c6ff" stopOpacity="0.2" />
-              </linearGradient>
-              <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#6c63ff" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#7b2fff" stopOpacity="0.1" />
-              </linearGradient>
-            </defs>
-          </svg>
-
-          {/* Inner Counter-Rotating Rings */}
-          <svg className="absolute w-[80%] h-[80%] animate-[spin_15s_linear_infinite_reverse]" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#00f5ff" strokeWidth="0.75" strokeDasharray="15 30 5 15" opacity="0.4" />
-            <circle cx="100" cy="100" r="65" fill="none" stroke="#6c63ff" strokeWidth="1" strokeDasharray="40 10 20 10" opacity="0.6" />
-          </svg>
-
-          {/* Neural Core Icon */}
-          <div className="absolute flex flex-col items-center justify-center animate-pulse">
-            <Cpu size={48} className="text-[#00f5ff] drop-shadow-[0_0_15px_rgba(0,245,255,0.7)]" />
-            <span className="text-[10px] tracking-[4px] text-white/50 font-bold uppercase mt-2">SYS_CORE</span>
-          </div>
+      {/* LEFT/TOP SECTION: Interactive 3D Robot Spline */}
+      <div className="relative w-full md:w-[45%] h-[40vh] md:h-screen flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-[#00f5ff]/10 bg-black/10 z-10">
+        <div className="w-full h-full relative">
+          <Spline scene="https://prod.spline.design/MyJlQNxotlykGCGr/scene.splinecode" />
+          {/* Edge fade overlay to blend spline nicely */}
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#04040c] via-transparent to-[#0a0a25] opacity-40" />
         </div>
 
-        <div className="text-center mt-6 px-6">
+        {/* Text brand overlay */}
+        <div className="absolute bottom-12 text-center pointer-events-none z-20">
           <h2 className="text-2xl font-bold font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-[#00f5ff] to-[#6c63ff] tracking-wider mb-2">
             RAHONAM PLATFORM
           </h2>
@@ -205,20 +180,24 @@ export default function LoginPage({ onLogin }) {
         </div>
 
         {/* Developer attribution in subtle style */}
-        <div className="absolute bottom-4 text-[11px] text-white/20 tracking-[1px] uppercase hidden md:block">
+        <div className="absolute bottom-4 text-[11px] text-white/20 tracking-[1px] uppercase hidden md:block z-20">
           REVERSED CREATION BY MANOHAR
         </div>
       </div>
 
       {/* RIGHT/BOTTOM SECTION: Centered Login Form Card */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12 z-10">
+      <div className="flex-1 flex items-center justify-center py-4 px-4 md:p-6 z-10 overflow-y-auto h-screen">
         <div
-          className={`login-card w-full max-w-[430px] p-8 md:p-10 rounded-3xl ${
+          className={`login-card w-full max-w-[420px] py-6 px-6 md:py-8 md:px-8 rounded-3xl my-auto max-h-[95vh] flex flex-col justify-between overflow-y-auto ${
             mounted ? 'login-card-enter' : 'opacity-0'
           }`}
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(0, 245, 255, 0.2) transparent'
+          }}
         >
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-4">
             <h1 className="text-3xl font-bold font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-[#00f5ff] to-[#6c63ff] mb-1">
               SYSTEM ACCESS
             </h1>
@@ -228,7 +207,7 @@ export default function LoginPage({ onLogin }) {
           </div>
 
           {/* Tab Switcher (Sign In / Register) */}
-          <div className="login-tab-container relative flex w-full mb-8 rounded-full p-1">
+          <div className="login-tab-container relative flex w-full mb-5 rounded-full p-1 flex-shrink-0">
             <div
               className="login-tab-indicator absolute top-1 bottom-1 rounded-full"
               style={{
@@ -264,25 +243,25 @@ export default function LoginPage({ onLogin }) {
 
           {/* Status Notifications */}
           {errorText && (
-            <div className="mb-6 p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-start gap-3 animate-fade-in">
+            <div className="mb-4 p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-start gap-3 animate-fade-in flex-shrink-0">
               <AlertCircle size={18} className="text-red-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-red-200/90 font-medium leading-relaxed">{errorText}</p>
             </div>
           )}
 
           {successText && (
-            <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-start gap-3 animate-fade-in">
+            <div className="mb-4 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-start gap-3 animate-fade-in flex-shrink-0">
               <CheckCircle2 size={18} className="text-emerald-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-emerald-200/90 font-medium leading-relaxed">{successText}</p>
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3.5 flex-1 flex flex-col justify-center">
             {/* REGISTER TAB EXTRA FIELDS */}
             {activeTab === 'register' && (
               <>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="login-label">Full Name</label>
                   <div className="relative">
                     <User size={16} className="login-input-icon" />
@@ -297,7 +276,7 @@ export default function LoginPage({ onLogin }) {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="login-label">Phone Number</label>
                   <div className="relative">
                     <Phone size={16} className="login-input-icon" />
@@ -314,7 +293,7 @@ export default function LoginPage({ onLogin }) {
             )}
 
             {/* Email Field (Used for both tabs) */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="login-label">Email Address</label>
               <div className="relative">
                 <Mail size={16} className="login-input-icon" />
@@ -330,7 +309,7 @@ export default function LoginPage({ onLogin }) {
             </div>
 
             {/* Password Field (Used for both tabs) */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <label className="login-label">Password</label>
                 {activeTab === 'login' && (
@@ -364,7 +343,7 @@ export default function LoginPage({ onLogin }) {
 
             {/* Confirm Password (Register tab only) */}
             {activeTab === 'register' && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="login-label">Confirm Password</label>
                 <div className="relative">
                   <Lock size={16} className="login-input-icon" />
@@ -391,7 +370,7 @@ export default function LoginPage({ onLogin }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="login-primary-btn mt-6 opacity-90 hover:opacity-100 disabled:opacity-50"
+              className="login-primary-btn mt-4 opacity-90 hover:opacity-100 disabled:opacity-50 flex-shrink-0"
             >
               {isLoading ? (
                 <Loader2 size={18} className="animate-spin text-white" />

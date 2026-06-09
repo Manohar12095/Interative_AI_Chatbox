@@ -66,6 +66,13 @@ export default function App() {
   // Cloud settings hook — depends on session being set
   const { settings, updateSetting, loading: settingsLoading } = useSettings(session);
 
+  // Auto-open settings if user is logged in but has no API key setup
+  useEffect(() => {
+    if (!settingsLoading && session && !settings.api_key) {
+      setSettingsOpen(true);
+    }
+  }, [settingsLoading, session, settings.api_key]);
+
   // Load sessions and auth on mount
   useEffect(() => {
     // Check active session
@@ -382,6 +389,7 @@ export default function App() {
         onLogin={(authSession) => {
           if (authSession) {
             setSession(authSession);
+            setSettingsOpen(true); // Open settings modal right after login!
             if (authSession.user?.isLocal) {
               localStorage.setItem('apex_guest_user', JSON.stringify(authSession.user));
             } else {

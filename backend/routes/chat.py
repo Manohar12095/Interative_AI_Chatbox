@@ -19,6 +19,8 @@ async def chat(request: ChatRequest):
             session_id=request.session_id,
             enabled_tools=request.enabled_tools,
             api_key=request.api_key,
+            provider=request.provider,
+            model=request.model,
             file_context=request.file_context,
             topic_context=request.topic_context,
             history=request.history

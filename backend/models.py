@@ -11,6 +11,8 @@ class ChatRequest(BaseModel):
     session_id: str = "default"
     enabled_tools: list[str] = Field(default_factory=list)
     api_key: Optional[str] = None  # User-provided override
+    provider: Optional[str] = None # User-provided provider ("groq", "openai", "gemini")
+    model: Optional[str] = None    # User-provided model override
     file_context: Optional[str] = None  # Pre-analysed file content
     topic_context: Optional[str] = None  # Selected conversation topic
     history: list[dict] = Field(default_factory=list)  # Past conversation history from frontend

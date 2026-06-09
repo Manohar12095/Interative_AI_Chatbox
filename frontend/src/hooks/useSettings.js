@@ -4,6 +4,8 @@ import { insforge } from '../utils/insforge';
 const DEFAULT_SETTINGS = {
   theme: 'dark',
   font_size: 'medium',
+  provider: 'groq',
+  connection_mode: 'serverless',
   api_key: '',
   model: 'llama-3.3-70b-versatile'
 };
@@ -41,6 +43,8 @@ export function useSettings(session) {
           setSettings({
             theme: data.theme || 'dark',
             font_size: data.font_size || 'medium',
+            provider: data.provider || 'groq',
+            connection_mode: data.connection_mode || 'serverless',
             api_key: data.api_key || '',
             model: data.model || 'llama-3.3-70b-versatile'
           });

@@ -69,6 +69,8 @@ async def run_agent_stream(
     session_id: str = "default",
     enabled_tools: list[str] = None,
     api_key: str = None,
+    provider: str = None,
+    model: str = None,
     file_context: str = None,
     topic_context: str = None,
     history: list[dict] = None
@@ -77,21 +79,58 @@ async def run_agent_stream(
     Generator that yields SSE events as the agent processes.
     Event types: tool_start, tool_result, token, done, error
     """
-    key = api_key or GROQ_API_KEY
-    if not key:
-        yield _sse("error", content="No API key configured. Please set your Groq API key in Settings.")
-        return
+    import os
+    selected_provider = (provider or "groq").lower()
+
+    if selected_provider == "openai":
+        key = api_key or os.getenv("OPENAI_API_KEY", "")
+        if not key:
+            yield _sse("error", content="No OpenAI API key configured. Please set your OpenAI API key in Settings.")
+            return
+    elif selected_provider == "gemini":
+        key = api_key or os.getenv("GEMINI_API_KEY", "")
+        if not key:
+            yield _sse("error", content="No Gemini API key configured. Please set your Gemini API key in Settings.")
+            return
+    else:
+        key = api_key or GROQ_API_KEY
+        if not key:
+            yield _sse("error", content="No Groq API key configured. Please set your Groq API key in Settings.")
+            return
 
     try:
-        llm = ChatGroq(
-            api_key=key,
-            model=LLAMA_MODEL,
-            streaming=True,
-            temperature=0.7,
-            max_tokens=2048,
-        )
+        if selected_provider == "openai":
+            from langchain_openai import ChatOpenAI
+            llm = ChatOpenAI(
+                api_key=key,
+                model=model or "gpt-4o-mini",
+                streaming=True,
+                temperature=0.7,
+                max_tokens=2048,
+            )
+        elif selected_provider == "gemini":
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            llm = ChatGoogleGenerativeAI(
+                google_api_key=key,
+                model=model or "gemini-1.5-flash",
+                streaming=True,
+                temperature=0.7,
+                max_output_tokens=2048,
+            )
+        else:
+            from langchain_groq import ChatGroq
+            llm = ChatGroq(
+                api_key=key,
+                model=model or LLAMA_MODEL,
+                streaming=True,
+                temperature=0.7,
+                max_tokens=2048,
+            )
+
         active_tools = _get_active_tools(enabled_tools or [])
         tool_map = {t.name: t for t in active_tools}
+        
+        # Google Generative AI handles tool binding differently, so make sure active tools is not empty
         llm_with_tools = llm.bind_tools(active_tools) if active_tools else llm
 
         # Build full input with file context

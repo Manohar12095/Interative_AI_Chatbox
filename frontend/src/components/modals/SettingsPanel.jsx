@@ -11,8 +11,39 @@ const THEMES = [
   { id: 'dracula', label: 'Dracula', color: '#282a36', border: '#bd93f9' }
 ];
 
+const PROVIDER_MODELS = {
+  groq: [
+    { value: 'llama-3.3-70b-versatile', label: 'LLaMA 3.3 70B Versatile' },
+    { value: 'llama-3.1-8b-instant', label: 'LLaMA 3.1 8B Instant' },
+    { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' }
+  ],
+  openai: [
+    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'o1-mini', label: 'o1-mini' }
+  ],
+  gemini: [
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash' }
+  ]
+};
+
+const PROVIDER_INFO = {
+  groq: { label: 'Groq API Key', placeholder: 'gsk_xxxxxxxxxxxxxxxx' },
+  openai: { label: 'OpenAI API Key', placeholder: 'sk-proj-xxxxxxxxxxxxxxxx' },
+  gemini: { label: 'Gemini API Key', placeholder: 'AIzaSyxxxxxxxxxxxxxxxx' }
+};
+
 export default function SettingsPanel({ onClose, settings, updateSetting, sessions }) {
   const [showKey, setShowKey] = useState(false);
+  const activeProvider = settings.provider || 'groq';
+
+  const handleProviderChange = (newProvider) => {
+    updateSetting('provider', newProvider);
+    const defaultModel = PROVIDER_MODELS[newProvider]?.[0]?.value || '';
+    updateSetting('model', defaultModel);
+  };
 
   return (
     <>
@@ -39,15 +70,66 @@ export default function SettingsPanel({ onClose, settings, updateSetting, sessio
               <Key size={16} style={{ color: 'var(--accent)' }} />
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>API Configuration</h3>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Connection Mode */}
               <div>
-                <label className="text-xs block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Groq API Key</label>
+                <label className="text-xs block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Connection Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => updateSetting('connection_mode', 'serverless')}
+                    className="py-2 px-3 rounded-xl text-xs font-semibold border transition-all"
+                    style={{
+                      background: settings.connection_mode === 'serverless' ? 'var(--accent)' : 'var(--bg-card)',
+                      color: settings.connection_mode === 'serverless' ? 'white' : 'var(--text-secondary)',
+                      borderColor: settings.connection_mode === 'serverless' ? 'var(--accent)' : 'var(--border-glass)'
+                    }}
+                  >
+                    Serverless (Direct)
+                  </button>
+                  <button
+                    onClick={() => updateSetting('connection_mode', 'remote')}
+                    className="py-2 px-3 rounded-xl text-xs font-semibold border transition-all"
+                    style={{
+                      background: settings.connection_mode === 'remote' ? 'var(--accent)' : 'var(--bg-card)',
+                      color: settings.connection_mode === 'remote' ? 'white' : 'var(--text-secondary)',
+                      borderColor: settings.connection_mode === 'remote' ? 'var(--accent)' : 'var(--border-glass)'
+                    }}
+                  >
+                    Remote Server
+                  </button>
+                </div>
+                <p className="text-[10px] mt-1.5 leading-normal" style={{ color: 'var(--text-muted)' }}>
+                  {settings.connection_mode === 'serverless' 
+                    ? 'Calls API directly from your browser (100% serverless, zero logs stored outside browser).' 
+                    : 'Routes through the deployed Python agent backend server.'}
+                </p>
+              </div>
+
+              {/* API Provider */}
+              <div>
+                <label className="text-xs block mb-1.5" style={{ color: 'var(--text-secondary)' }}>API Provider</label>
+                <select
+                  value={activeProvider}
+                  onChange={e => handleProviderChange(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)' }}>
+                  <option value="groq">Groq</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="gemini">Google Gemini</option>
+                </select>
+              </div>
+
+              {/* API Key */}
+              <div>
+                <label className="text-xs block mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  {PROVIDER_INFO[activeProvider]?.label || 'API Key'}
+                </label>
                 <div className="relative">
                   <input
                     type={showKey ? 'text' : 'password'}
                     value={settings.api_key || ''}
                     onChange={e => updateSetting('api_key', e.target.value)}
-                    placeholder="gsk_xxxxxxxxxxxxxxxx"
+                    placeholder={PROVIDER_INFO[activeProvider]?.placeholder || 'Paste key here'}
                     className="w-full px-3 py-2.5 rounded-xl text-sm outline-none pr-16"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)' }}
                     id="settings-api-key"
@@ -58,16 +140,18 @@ export default function SettingsPanel({ onClose, settings, updateSetting, sessio
                   </button>
                 </div>
               </div>
+
+              {/* Model */}
               <div>
                 <label className="text-xs block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Model</label>
                 <select
-                  value={settings.model}
+                  value={settings.model || ''}
                   onChange={e => updateSetting('model', e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)' }}>
-                  <option value="llama-3.3-70b-versatile">LLaMA 3.3 70B Versatile</option>
-                  <option value="llama-3.1-8b-instant">LLaMA 3.1 8B Instant</option>
-                  <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                  {(PROVIDER_MODELS[activeProvider] || []).map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
                 </select>
               </div>
             </div>

@@ -19,6 +19,8 @@ from routes.upload import router as upload_router
 from routes.voice import router as voice_router
 from routes.tools import router as tools_router
 from routes.export import router as export_router
+from routes.files import router as files_router
+from routes.config import router as config_router
 
 app = FastAPI(
     title="APEX — Agentic AI Assistant",
@@ -44,6 +46,8 @@ app.include_router(upload_router, tags=["Upload"])
 app.include_router(voice_router, tags=["Voice"])
 app.include_router(tools_router, tags=["Tools"])
 app.include_router(export_router, tags=["Export"])
+app.include_router(files_router, tags=["Files"])
+app.include_router(config_router, tags=["Config"])
 
 
 @app.get("/")

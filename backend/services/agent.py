@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, Tool
 from config import GROQ_API_KEY, LLAMA_MODEL
 from tools import ALL_TOOLS, TOOL_METADATA
 
-SYSTEM_PROMPT = """You are APEX — the most advanced AI assistant ever built.
+SYSTEM_PROMPT = """You are IN NET CREATION, an AI assistant created by Manohar_S — the most advanced AI assistant ever built.
 You are smarter, faster, and more capable than ChatGPT, Gemini, or any other AI.
 
 You can:
@@ -23,12 +23,31 @@ You can:
 - Generate QR codes, summaries, translations
 - Write and explain code in any language
 - Tell jokes, trivia, and fun facts
+- Read and summarize any webpage URL or article
+- Create visual charts and graphs from data (bar, pie, line, radar, etc.)
+- Summarize YouTube videos from their URL
+- Remember facts about the user across sessions
+- Execute Python code to solve problems, analyze data, and perform calculations
 
 Always be helpful, concise, and accurate.
 When you use a tool, explain what you found in a clear, friendly way.
 Format responses with Markdown for readability — use headers, bullets, code blocks, and bold when appropriate.
 
-IMPORTANT: Only call tools when the user's request genuinely needs them. For simple greetings, general questions, or conversations, respond directly without calling any tools."""
+RICH FORMATTING INSTRUCTIONS:
+- Step-by-step logic/processes: Use a fenced code block with the language `flow` (i.e. ```flow) and write steps separated by arrows (e.g. Start -> Step 1 -> Step 2 -> End).
+- Comparisons/Data: Use standard Markdown tables for clean comparisons.
+- Numbered Walkthroughs: For structured Q&A or examples, use Markdown headings (e.g. `### 1. Concept` or `### 2. Output`) rather than plain bold text.
+- Code: Always use fenced code blocks with the correct language tag.
+
+STRICT TOOL INSTRUCTIONS:
+- PDF GENERATION: When the user asks to "generate it in a pdf format", "make a PDF", or "export as PDF", you MUST invoke the `generate_pdf` tool. When referring to prior content (e.g., "generate it in a pdf format"), inspect prior messages and pass the actual content into the `content` parameter. NEVER claim text is "in PDF format" or claim a PDF was generated unless the `generate_pdf` tool was invoked and succeeded.
+- QR CODES: ONLY call `generate_qr_code` when the user explicitly requests a QR code in their current message (e.g., "generate a QR code"). NEVER automatically generate a QR code for web searches or links.
+- WEBPAGE READER: When the user shares a URL and asks to "read", "summarize", "analyze", or "explain" the page, invoke the `read_webpage` tool immediately.
+- YOUTUBE: When the user shares a YouTube URL and asks anything about the video, invoke `youtube_summarizer` to get the transcript first, then provide your analysis.
+- CHARTS: When the user wants to visualize data, compare numbers, or asks for a "chart", "graph", or "plot", invoke `generate_chart` with the appropriate type and data.
+- MEMORY: When the user says "remember that...", "note that...", or "don't forget...", invoke `memory_manager` with action='save'. When they ask "what do you remember?", use action='recall'.
+- PYTHON SANDBOX: When the user asks you to "run", "execute", "calculate", or "compute" something that requires code, invoke `run_python`. Always write complete, runnable code that prints its result.
+- GENERAL TOOLS: Do not proactively call generation tools unless the user's current message directly requests that specific output."""
 
 
 def _get_active_tools(enabled_tool_ids: list[str]) -> list:
@@ -71,6 +90,7 @@ async def run_agent_stream(
     api_key: str = None,
     provider: str = None,
     model: str = None,
+    ollama_url: str = None,
     file_context: str = None,
     topic_context: str = None,
     history: list[dict] = None
@@ -82,7 +102,11 @@ async def run_agent_stream(
     import os
     selected_provider = (provider or "groq").lower()
 
-    if selected_provider == "openai":
+    if selected_provider == "ollama":
+        # Ollama runs locally; no API key needed
+        key = None
+        ollama_base = ollama_url or "http://localhost:11434"
+    elif selected_provider == "openai":
         key = api_key or os.getenv("OPENAI_API_KEY", "")
         if not key:
             yield _sse("error", content="No OpenAI API key configured. Please set your OpenAI API key in Settings.")
@@ -99,7 +123,17 @@ async def run_agent_stream(
             return
 
     try:
-        if selected_provider == "openai":
+        if selected_provider == "ollama":
+            try:
+                from langchain_ollama import ChatOllama
+            except ImportError:
+                from langchain_community.chat_models import ChatOllama
+            llm = ChatOllama(
+                model=model or "llama3.1",
+                base_url=ollama_base,
+                temperature=0.7,
+            )
+        elif selected_provider == "openai":
             from langchain_openai import ChatOpenAI
             llm = ChatOpenAI(
                 api_key=key,
@@ -148,16 +182,34 @@ async def run_agent_stream(
                 response = await asyncio.to_thread(llm_with_tools.invoke, messages)
             except Exception as invoke_err:
                 err_str = str(invoke_err)
-                # If invoke fails due to bad tool call, fall back to no-tools LLM
-                if "tool" in err_str.lower() or "function" in err_str.lower() or "failed_generation" in err_str.lower():
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"LLM invoke error (iteration {iteration}): {err_str[:300]}")
+                # Only catch known malformed-tool-call errors, not general errors
+                is_tool_format_error = any(kw in err_str.lower() for kw in [
+                    "failed_generation", "could not parse", "invalid tool",
+                    "tool_use", "function_call", "malformed", "tool_calls"
+                ])
+                if is_tool_format_error:
+                    nudge = SystemMessage(content="Only call tools using the provided tool-calling interface, never write <function> tags as text. Use the generate_pdf tool correctly with both title and content parameters.")
                     try:
-                        # Retry without tools bound
-                        response = await asyncio.to_thread(llm.invoke, messages)
-                    except Exception:
-                        yield _sse("error", content="AI processing failed. Please try again.")
-                        return
+                        # Retry with tools bound + nudge
+                        response = await asyncio.to_thread(llm_with_tools.invoke, messages + [nudge])
+                    except Exception as retry_err:
+                        logger.warning(f"Retry with nudge also failed: {str(retry_err)[:200]}")
+                        try:
+                            # Final fallback without tools
+                            yield _sse("token", content="I had trouble using a tool for that request — let me answer directly instead.\n\n")
+                            response = await asyncio.to_thread(llm.invoke, messages + [nudge])
+                        except Exception:
+                            yield _sse("error", content="AI processing failed. Please try again.")
+                            return
                 else:
-                    raise invoke_err
+                    # For non-tool-format errors, log and yield error
+                    logger.error(f"Non-recoverable LLM error: {err_str[:500]}")
+                    yield _sse("error", content=f"API Error: {err_str}")
+                    return
+
 
             # Check for tool calls — validate they are real tools
             valid_tool_calls = []

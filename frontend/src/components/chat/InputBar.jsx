@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Mic, X, FileText, StopCircle, Sparkles } from 'lucide-react';
+import { Send, Paperclip, FolderPlus, Mic, X, StopCircle, Sparkles, Reply, Radio } from 'lucide-react';
+import AttachmentChip from './AttachmentChip';
 
-export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFile, onRemoveFile, addToast }) {
+export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFiles = [], onRemoveFile, addToast, replyTo, onCancelReply, onAiMode, settings = {} }) {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [interimText, setInterimText] = useState('');
@@ -9,8 +10,11 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
   const shouldRestartRef = useRef(false);
   const isRecordingRef = useRef(false);
+  const interimTextRef = useRef('');
 
   // Keep ref in sync with state so callbacks see the latest value
   useEffect(() => {
@@ -26,7 +30,7 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
   }, [text]);
 
   const handleSend = () => {
-    if ((!text.trim() && !attachedFile) || isStreaming) return;
+    if ((!text.trim() && attachedFiles.length === 0) || isStreaming) return;
     onSend(text.trim());
     setText('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -40,12 +44,10 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (file) onFileAttach(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) onFileAttach(files);
     e.target.value = '';
   };
-
-  const interimTextRef = useRef('');
 
   const startRecognitionInstance = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -126,13 +128,61 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
   };
 
   const startRecording = async () => {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      addToast('Speech recognition is not supported. Please use Chrome or Edge.', 'error');
-      return;
-    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
+      
+      const savedSettings = JSON.parse(localStorage.getItem('apex_settings') || '{}');
+      const sttModelSize = savedSettings.stt_model_size || 'base';
+      
+      // If we're using the fallback web api
+      // startRecognitionInstance();
+      // Wait, let's use media recorder for offline support
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        try {
+          setInterimText('Transcribing...');
+          
+          const { transcribeAudio } = await import('../../utils/api');
+          const data = await transcribeAudio(audioBlob, sttModelSize);
+          
+          if (data.transcription) {
+            setText(prev => {
+              const trimmed = prev.trimEnd();
+              return (trimmed ? trimmed + ' ' : '') + data.transcription + ' ';
+            });
+          } else if (data.error) {
+            // If backend STT fails, try Web Speech API fallback
+            addToast(`STT backend error: ${data.error}. Using browser fallback.`, 'warning');
+            startRecognitionInstance();
+          }
+        } catch (e) {
+          // Network error — fall back to Web Speech API
+          addToast('Backend unavailable, switching to browser voice recognition.', 'info');
+          startRecognitionInstance();
+        }
+        
+        setInterimText('');
+        setIsRecording(false);
+        isRecordingRef.current = false;
+      };
+      
+      mediaRecorder.start(100); // chunk every 100ms
+      setIsRecording(true);
+      isRecordingRef.current = true;
+      setInterimText('Listening...');
+      
     } catch (err) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         addToast('Microphone permission denied. Check your browser site settings.', 'error');
@@ -141,20 +191,21 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
       }
       return;
     }
-    startRecognitionInstance();
   };
 
   const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
     shouldRestartRef.current = false;
     isRecordingRef.current = false;
     setIsRecording(false);
-    if (interimTextRef.current) {
+    if (interimTextRef.current && interimTextRef.current !== 'Listening...' && interimTextRef.current !== 'Transcribing...') {
       setText(prev => {
         const trimmed = prev.trimEnd();
         return (trimmed ? trimmed + ' ' : '') + interimTextRef.current + ' ';
       });
     }
-    setInterimText('');
     interimTextRef.current = '';
     try {
       recognitionRef.current?.stop();
@@ -169,7 +220,7 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
     }
   };
 
-  const canSend = (text.trim() || attachedFile) && !isStreaming;
+  const canSend = (text.trim() || attachedFiles.length > 0) && !isStreaming;
 
   return (
     <div
@@ -179,28 +230,41 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
         padding: '12px 20px 16px',
       }}
     >
-      <div className="w-full mx-auto" style={{ maxWidth: '760px' }}>
+      <div className="w-full mx-auto" style={{ maxWidth: '1000px' }}>
 
-        {/* Attached file chip */}
-        {attachedFile && (
+        {/* Reply Tag */}
+        {replyTo && (
           <div className="flex items-center gap-2 mb-2 animate-fade-slide-up">
             <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px]"
-              style={{ background: 'var(--brand-primary-light)', border: '1px solid var(--border-glass)', color: 'var(--accent)' }}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-xl text-[12px]"
+              style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }}
             >
-              <FileText size={13} />
-              <span className="truncate max-w-[200px] font-medium">{attachedFile.name}</span>
-              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                ({(attachedFile.size / 1024).toFixed(1)} KB)
-              </span>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <Reply size={13} style={{ color: 'var(--accent)' }} className="flex-shrink-0" />
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Replying to {replyTo.role === 'user' ? 'yourself' : 'IN NET CREATION'}
+                </span>
+                <span className="truncate flex-1" style={{ color: 'var(--text-muted)' }}>
+                  {replyTo.content.substring(0, 60)}...
+                </span>
+              </div>
               <button
-                onClick={onRemoveFile}
-                className="p-0.5 rounded hover:bg-white/20 transition-colors"
-                style={{ color: 'var(--accent)' }}
+                onClick={onCancelReply}
+                className="p-1 rounded hover:bg-white/10 transition-colors flex-shrink-0 ml-2"
+                title="Cancel reply"
               >
-                <X size={11} />
+                <X size={12} />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Attached files chips */}
+        {attachedFiles.length > 0 && (
+          <div className="flex items-center gap-2 mb-2 animate-fade-slide-up overflow-x-auto pb-1 hide-scrollbar">
+            {attachedFiles.map((file, idx) => (
+              <AttachmentChip key={idx} file={file} onRemove={() => onRemoveFile(idx)} />
+            ))}
           </div>
         )}
 
@@ -254,7 +318,7 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
               onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder={isRecording ? 'Speak now — transcription appears here…' : 'Ask RAHONAM anything...'}
+              placeholder={isRecording ? 'Speak now — transcription appears here…' : 'Ask IN NET CREATION anything...'}
               rows={1}
               className="flex-1 bg-transparent outline-none resize-none text-[14px] py-1 min-h-[34px]"
               style={{
@@ -287,18 +351,37 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
                 type="file"
                 className="hidden"
                 onChange={handleFileSelect}
-                accept="image/*,audio/*,video/*,.pdf,.docx,.xlsx,.csv,.txt,.py,.js,.json"
+                multiple
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all"
-                title="Attach file"
+                title="Attach files"
                 style={{ color: 'var(--text-muted)' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
               >
                 <Paperclip size={14} />
-                <span className="hidden sm:inline">Attach</span>
+                <span className="hidden sm:inline">File</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.webkitdirectory = true;
+                  input.multiple = true;
+                  input.onchange = (e) => handleFileSelect(e);
+                  input.click();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+                title="Attach folder"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+              >
+                <FolderPlus size={14} />
+                <span className="hidden sm:inline">Folder</span>
               </button>
               <button
                 onClick={toggleRecording}
@@ -318,6 +401,19 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
                   : <Mic size={14} />
                 }
                 <span className="hidden sm:inline">{isRecording ? 'Stop' : 'Voice'}</span>
+              </button>
+
+              {/* AI Mode button */}
+              <button
+                onClick={onAiMode}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+                title="Start continuous AI voice conversation"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-light)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+              >
+                <Radio size={14} />
+                <span className="hidden sm:inline">AI Mode</span>
               </button>
             </div>
 
@@ -349,7 +445,7 @@ export default function InputBar({ onSend, isStreaming, onFileAttach, attachedFi
 
         {/* Disclaimer */}
         <p className="text-center text-[10px] mt-2" style={{ color: 'var(--text-dim, var(--text-muted))' }}>
-          RAHONAM may make mistakes. Verify important information.
+          IN NET CREATION may make mistakes. Verify important information.
         </p>
       </div>
     </div>

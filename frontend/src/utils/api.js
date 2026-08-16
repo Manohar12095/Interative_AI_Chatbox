@@ -165,15 +165,33 @@ export async function clearSession(id) {
   return { success: true };
 }
 
-export async function uploadFile(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await fetch(`${API_BASE}/upload`, {
-    method: 'POST',
-    body: formData
+export function uploadFile(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/upload`);
+    
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded * 100) / e.total));
+        }
+      };
+    }
+    
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(JSON.parse(xhr.responseText));
+      } else {
+        reject(new Error('Failed to upload file'));
+      }
+    };
+    
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.send(formData);
   });
-  if (!res.ok) throw new Error('Failed to upload file');
-  return res.json();
 }
 
 export async function exportChat(sessionId, format = 'txt', includeTimestamps = true, includeToolResults = true) {
@@ -190,7 +208,7 @@ export async function exportChat(sessionId, format = 'txt', includeTimestamps = 
  * Stream chat response via SSE using fetch + ReadableStream
  * Robust SSE parser with connection error recovery
  */
-export async function streamChat({ message, sessionId, enabledTools, apiKey, provider, model, connectionMode, fileContext, topicContext, history = [], onToken, onToolStart, onToolResult, onDone, onError }) {
+export async function streamChat({ message, sessionId, enabledTools, apiKey, provider, model, ollamaUrl, connectionMode, fileContext, topicContext, history = [], onToken, onToolStart, onToolResult, onSessionTitle, onDone, onError }) {
   if (connectionMode === 'serverless') {
     return runClientSideAgent({
       message,
@@ -226,6 +244,7 @@ export async function streamChat({ message, sessionId, enabledTools, apiKey, pro
         api_key: apiKey || undefined,
         provider: provider || undefined,
         model: model || undefined,
+        ollama_url: ollamaUrl || undefined,
         file_context: fileContext || undefined,
         topic_context: topicContext || undefined,
         history: history // Pass history to stateless backend
@@ -273,6 +292,9 @@ export async function streamChat({ message, sessionId, enabledTools, apiKey, pro
             case 'tool_result':
               onToolResult?.(data);
               break;
+            case 'session_title':
+              onSessionTitle?.(data.title, data.session_id);
+              break;
             case 'done':
               clearTimeout(timeoutId);
               onDone?.();
@@ -314,6 +336,35 @@ export async function streamChat({ message, sessionId, enabledTools, apiKey, pro
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+/**
+ * Generate TTS audio for a given text string.
+ * Returns the absolute URL of the generated audio file.
+ */
+export async function fetchTts(text, voiceId = '', engine = 'local') {
+  const res = await fetch('/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voice_id: voiceId, engine })
+  });
+  if (!res.ok) throw new Error(`TTS error: ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  // data.url is a path like /static/uploads/tts/xxx.mp3
+  return data.url;
+}
+
+/**
+ * Transcribe an audio blob via the backend /voice endpoint.
+ */
+export async function transcribeAudio(audioBlob, modelSize = 'base') {
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'recording.webm');
+  formData.append('model_size', modelSize);
+  const res = await fetch('/voice', { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`STT error: ${res.status}`);
+  return res.json(); // { transcription } or { error }
 }
 
 export async function saveMessage({ sessionId, role, content, toolCalls = [], toolResults = [] }) {
@@ -361,7 +412,7 @@ async function runClientSideAgent({ message, enabledTools, apiKey, provider, mod
     return;
   }
 
-  const sysPrompt = `You are RAHONAM — a premium agentic AI assistant. Always be helpful, concise, and accurate. Format responses with Markdown.`;
+  const sysPrompt = `You are IN NET CREATION — a premium agentic AI assistant. Always be helpful, concise, and accurate. Format responses with Markdown.`;
   const messages = [{ role: 'system', content: sysPrompt }];
   
   if (history && history.length > 0) {
@@ -493,7 +544,7 @@ async function callGroqDirect(apiKey, model, messages, tools) {
     payload.stream = true;
   }
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  let res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -503,8 +554,23 @@ async function callGroqDirect(apiKey, model, messages, tools) {
   });
 
   if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Groq API error: ${errText || res.statusText}`);
+    if (res.status === 429 && model !== 'llama-3.1-8b-instant') {
+      console.warn("Groq rate limit hit. Falling back to llama-3.1-8b-instant...");
+      payload.model = 'llama-3.1-8b-instant';
+      res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Groq API error: ${errText || res.statusText}`);
+    }
   }
 
   if (useStream) {
@@ -890,6 +956,75 @@ function getClientToolsMetadata(enabledTools) {
     });
   }
 
+  if (activeIds.includes('generate_pdf')) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'generate_pdf',
+        description: 'Generate a downloadable PDF document with the given title and content. Use this tool when the user asks to export, download, save, or generate a PDF of some content, or specifically asks for output "in a pdf format".',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'The title of the PDF document.' },
+            content: { type: 'string', description: 'The main body content/text of the PDF.' }
+          },
+          required: ['title', 'content']
+        }
+      }
+    });
+  }
+
+  if (activeIds.includes('crypto_price')) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'crypto_price',
+        description: 'Live cryptocurrency prices and stats.',
+        parameters: {
+          type: 'object',
+          properties: {
+            symbol: { type: 'string', description: 'The cryptocurrency symbol (e.g., BTC, ETH).' }
+          },
+          required: ['symbol']
+        }
+      }
+    });
+  }
+
+  if (activeIds.includes('get_maps_location')) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'get_maps_location',
+        description: 'Get direct Google Maps link for addresses.',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'The address or location name.' }
+          },
+          required: ['location']
+        }
+      }
+    });
+  }
+
+  if (activeIds.includes('search_app_links')) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'search_app_links',
+        description: 'Find app store links and official websites.',
+        parameters: {
+          type: 'object',
+          properties: {
+            app_name: { type: 'string', description: 'The name of the app to search for.' }
+          },
+          required: ['app_name']
+        }
+      }
+    });
+  }
+
   return tools;
 }
 
@@ -1107,7 +1242,11 @@ function getToolDisplayName(name) {
     summarise_text: 'Summariser',
     define_word: 'Dictionary',
     get_ip_info: 'IP Lookup',
-    get_joke_or_trivia: 'Jokes'
+    get_joke_or_trivia: 'Jokes',
+    generate_pdf: 'PDF Generator',
+    crypto_price: 'Crypto Tracker',
+    get_maps_location: 'Maps',
+    search_app_links: 'App Search'
   };
   return map[name] || name;
 }
@@ -1130,7 +1269,31 @@ function getToolIcon(name) {
     summarise_text: '📝',
     define_word: '📚',
     get_ip_info: '🌐',
-    get_joke_or_trivia: '😄'
+    get_joke_or_trivia: '😄',
+    generate_pdf: '📄',
+    crypto_price: '💰',
+    get_maps_location: '🗺️',
+    search_app_links: '📱'
   };
   return map[name] || '🔧';
 }
+
+export async function checkBackendHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3000) });
+    return res.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function fetchConfig() {
+  try {
+    const res = await fetch(`${API_BASE}/config`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (error) {
+    return null;
+  }
+}
+

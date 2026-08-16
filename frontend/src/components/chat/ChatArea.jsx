@@ -11,7 +11,7 @@ const FEATURE_PILLS = [
   { icon: <Brain size={12} />, label: 'Memory' },
 ];
 
-export default function ChatArea({ messages, isStreaming, onSuggestedPrompt }) {
+export default function ChatArea({ messages, isStreaming, onSuggestedPrompt, onReply }) {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -45,7 +45,7 @@ export default function ChatArea({ messages, isStreaming, onSuggestedPrompt }) {
       >
         <div
           className="animate-fade-slide-up text-center w-full"
-          style={{ maxWidth: '620px' }}
+          style={{ maxWidth: '800px' }}
         >
           {/* Glowing Logo */}
           <div className="relative mx-auto mb-6" style={{ width: '72px', height: '72px' }}>
@@ -78,7 +78,7 @@ export default function ChatArea({ messages, isStreaming, onSuggestedPrompt }) {
               letterSpacing: '-0.5px',
             }}
           >
-            Welcome to <span className="gradient-text">RAHONAM</span>
+            Welcome to <span className="gradient-text">IN NET CREATION</span>
           </h2>
 
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px', lineHeight: 1.7 }}>
@@ -159,7 +159,7 @@ export default function ChatArea({ messages, isStreaming, onSuggestedPrompt }) {
             className="mt-6 uppercase tracking-[1.5px]"
             style={{ fontSize: '10px', color: 'var(--text-muted)', opacity: 0.5 }}
           >
-            Powered by RAHONAM AI
+            Powered by IN NET CREATION AI
           </p>
         </div>
       </div>
@@ -177,10 +177,10 @@ export default function ChatArea({ messages, isStreaming, onSuggestedPrompt }) {
       {/* Messages — centered with a generous max-width that uses available space */}
       <div
         className="mx-auto w-full px-4 py-6 space-y-5"
-        style={{ maxWidth: '760px' }}
+        style={{ maxWidth: '1000px' }}
       >
         {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} index={i} />
+          <MessageBubble key={i} message={msg} index={i} onReply={onReply} />
         ))}
 
         {isStreaming

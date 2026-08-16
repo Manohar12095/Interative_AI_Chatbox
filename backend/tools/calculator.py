@@ -1,8 +1,12 @@
+from pydantic import BaseModel, Field
 import math
 import sympy as sp
 from langchain_core.tools import tool
 
-@tool
+class CalculatorSchema(BaseModel):
+    expression: str = Field(..., description="The expression for the calculator tool")
+
+@tool(args_schema=CalculatorSchema)
 def calculator(expression: str) -> str:
     """
     Evaluate math expressions, algebra, calculus, statistics.

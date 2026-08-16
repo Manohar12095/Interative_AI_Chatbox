@@ -1,7 +1,11 @@
+from pydantic import BaseModel, Field
 import requests
 from langchain_core.tools import tool
 
-@tool
+class CryptoPriceSchema(BaseModel):
+    coin_name: str = Field(..., description="The coin_name for the crypto_price tool")
+
+@tool(args_schema=CryptoPriceSchema)
 def crypto_price(coin_name: str) -> str:
     """Get the live price, 24h change, and market cap for any cryptocurrency (e.g. bitcoin, ethereum)."""
     try:

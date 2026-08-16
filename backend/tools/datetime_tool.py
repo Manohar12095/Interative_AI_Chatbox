@@ -1,7 +1,11 @@
+from pydantic import BaseModel, Field
 import datetime
 from langchain_core.tools import tool
 
-@tool
+class GetDatetimeSchema(BaseModel):
+    timezone: str = Field(default="UTC", description="The timezone for the get_datetime tool")
+
+@tool(args_schema=GetDatetimeSchema)
 def get_datetime(timezone: str = "UTC") -> str:
     """Get current date and time for any timezone."""
     try:

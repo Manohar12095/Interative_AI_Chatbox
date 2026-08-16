@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, User, Lock, Mail, Phone, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Spline from '@splinetool/react-spline';
 import { insforge } from '../../utils/insforge';
@@ -33,7 +33,8 @@ export default function LoginPage({ onLogin }) {
   });
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const updateField = (field, value) => {
@@ -172,7 +173,7 @@ export default function LoginPage({ onLogin }) {
         {/* Text brand overlay */}
         <div className="absolute bottom-12 text-center pointer-events-none z-20">
           <h2 className="text-2xl font-bold font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-[#00f5ff] to-[#6c63ff] tracking-wider mb-2">
-            RAHONAM PLATFORM
+            IN NET CREATION PLATFORM
           </h2>
           <p className="text-[12px] text-white/40 tracking-[3px] uppercase font-semibold">
             SECURE INTELLECT PORTAL
@@ -181,7 +182,7 @@ export default function LoginPage({ onLogin }) {
 
         {/* Developer attribution in subtle style */}
         <div className="absolute bottom-4 text-[11px] text-white/20 tracking-[1px] uppercase hidden md:block z-20">
-          REVERSED CREATION BY MANOHAR
+          CREATED BY MANOHAR_S
         </div>
       </div>
 
@@ -366,7 +367,6 @@ export default function LoginPage({ onLogin }) {
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -380,6 +380,17 @@ export default function LoginPage({ onLogin }) {
                 </span>
               )}
             </button>
+
+            <div className="mt-2 flex flex-col items-center gap-2">
+              <div className="w-full h-px bg-white/10" />
+              <button
+                type="button"
+                onClick={() => onLogin && onLogin(null)}
+                className="text-[11px] font-bold uppercase tracking-[2px] text-white/40 hover:text-[#00f5ff] transition-colors py-2"
+              >
+                Continue as Guest
+              </button>
+            </div>
           </form>
         </div>
       </div>

@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
     theme TEXT NOT NULL DEFAULT 'dark',
     font_size TEXT NOT NULL DEFAULT 'medium',
     api_key TEXT DEFAULT '',
-    model TEXT DEFAULT 'llama-3.3-70b-versatile',
+    model TEXT DEFAULT 'llama-3.1-8b-instant',
+    tts_voice TEXT DEFAULT 'en-GB-MaisieNeural',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

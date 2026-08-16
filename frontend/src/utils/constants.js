@@ -17,6 +17,10 @@ export const TOOL_DEFINITIONS = [
   { id: "summarise_text", name: "Summariser", icon: "📝", description: "Summarise long text content", category: "utility" },
   { id: "define_word", name: "Dictionary", icon: "📚", description: "Get word definitions and synonyms", category: "info" },
   { id: "get_ip_info", name: "IP Lookup", icon: "🌐", description: "Get location info for an IP", category: "info" },
+  { id: "crypto_price", name: "Crypto Tracker", icon: "💰", description: "Live cryptocurrency prices and stats", category: "info" },
+  { id: "get_maps_location", name: "Maps", icon: "🗺️", description: "Get direct Google Maps link for addresses", category: "utility" },
+  { id: "search_app_links", name: "App Search", icon: "📱", description: "Find app store links and official websites", category: "search" },
+  { id: "generate_pdf", name: "PDF Generator", icon: "📄", description: "Generate downloadable PDF documents", category: "utility" },
 ];
 
 export const SUGGESTED_PROMPTS = [

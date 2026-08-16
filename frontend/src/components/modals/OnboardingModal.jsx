@@ -10,7 +10,7 @@ export default function OnboardingModal({ onComplete, onSkip }) {
     {
       icon: <Key size={32} />,
       title: 'Enter your Groq API Key',
-      description: 'RAHONAM uses Groq\'s ultra-fast LLaMA 3.3 70B model. Get a free key at console.groq.com',
+      description: 'IN NET CREATION uses Groq\'s ultra-fast LLaMA 3.3 70B model. Get a free key at console.groq.com',
     },
     {
       icon: <Wrench size={32} />,
@@ -20,7 +20,7 @@ export default function OnboardingModal({ onComplete, onSkip }) {
     {
       icon: <MessageSquare size={32} />,
       title: 'Start Chatting',
-      description: 'You\'re all set! Ask RAHONAM anything and watch the magic happen.',
+      description: 'You\'re all set! Ask IN NET CREATION anything and watch the magic happen.',
     }
   ];
 
@@ -34,9 +34,9 @@ export default function OnboardingModal({ onComplete, onSkip }) {
       <div className="glass-card max-w-md w-full mx-4 p-8 animate-scale-pop">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="RAHONAM" className="w-16 h-16 rounded-2xl mx-auto mb-4 object-contain animate-glow-pulse" />
+          <img src="/logo.png" alt="IN NET CREATION" className="w-16 h-16 rounded-2xl mx-auto mb-4 object-contain animate-glow-pulse" />
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>
-            Welcome to RAHONAM
+            Welcome to IN NET CREATION
           </h1>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
             Reversed Creation — created by Manohar

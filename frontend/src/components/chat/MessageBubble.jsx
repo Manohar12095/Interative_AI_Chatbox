@@ -3,12 +3,16 @@ import { Bot, User, Copy, Check, Volume2, VolumeX, ThumbsUp, ThumbsDown, Sparkle
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CodeBlock from './CodeBlock';
+import FlowBlock from './FlowBlock';
 import ToolResultCard from './ToolResultCard';
+import AttachmentPreview from './AttachmentPreview';
+import ImageLightbox from './ImageLightbox';
 
-export default function MessageBubble({ message, index }) {
+export default function MessageBubble({ message, index, onReply }) {
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [feedback, setFeedback] = useState(null); // 'up' | 'down' | null
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   const isUser = message.role === 'user';
   const timestamp = message.timestamp
@@ -21,20 +25,43 @@ export default function MessageBubble({ message, index }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleTTS = () => {
+  const handleTTS = async () => {
     if (speaking) {
-      speechSynthesis.cancel();
+      // Assuming a global or ref audio object if we wanted to stop it, but for simplicity we can just track state
       setSpeaking(false);
+      if (window.currentAudio) {
+        window.currentAudio.pause();
+        window.currentAudio = null;
+      }
       return;
     }
-    const utterance = new SpeechSynthesisUtterance(message.content);
-    utterance.onend = () => setSpeaking(false);
-    speechSynthesis.speak(utterance);
+    
     setSpeaking(true);
+    try {
+      // Default to edge or local if provided via settings in a broader context, but we will use 'local' default for now
+      // To get the user's settings we'd need to pass them down, or fetch them here.
+      // Assuming 'edge' for demonstration if it's high quality, or 'local' as instructed.
+      const savedSettings = JSON.parse(localStorage.getItem('apex_settings') || '{}');
+      const engine = savedSettings.tts_engine || 'local';
+      const voice_id = savedSettings.tts_voice || '';
+      
+      const { fetchTts } = await import('../../utils/api');
+      const audioUrl = await fetchTts(message.content, voice_id, engine);
+      
+      const audio = new Audio(audioUrl);
+      window.currentAudio = audio;
+      audio.onended = () => setSpeaking(false);
+      audio.onerror = () => setSpeaking(false);
+      audio.play();
+    } catch (err) {
+      console.error("TTS error:", err);
+      setSpeaking(false);
+    }
   };
 
   return (
-    <div
+    <>
+      <div
       className={`flex gap-3 animate-fade-slide-up ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
       style={{ animationDelay: `${Math.min(index * 0.05, 0.3)}s` }}
     >
@@ -55,6 +82,15 @@ export default function MessageBubble({ message, index }) {
 
       {/* Content */}
       <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[78%] min-w-0`}>
+
+        {/* Attachments */}
+        {message.attachments?.length > 0 && (
+          <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full mb-1`}>
+            {message.attachments.map((file, i) => (
+              <AttachmentPreview key={i} file={file} onImageClick={setLightboxImage} />
+            ))}
+          </div>
+        )}
 
         {/* Tool results (before AI message) */}
         {!isUser && message.tool_results?.length > 0 && (
@@ -106,10 +142,27 @@ export default function MessageBubble({ message, index }) {
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
+                  a({ node, children, href, ...props }) {
+                    return (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[var(--accent)] underline hover:opacity-80 transition-opacity font-medium"
+                        {...props}
+                      >
+                        {children}
+                      </a>
+                    );
+                  },
                   code({ node, inline, className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
                     if (!inline && match) {
-                      return <CodeBlock language={match[1]} code={String(children).replace(/\n$/, '')} />;
+                      const lang = match[1];
+                      if (lang === 'flow') {
+                        return <FlowBlock code={String(children).replace(/\n$/, '')} />;
+                      }
+                      return <CodeBlock language={lang} code={String(children).replace(/\n$/, '')} />;
                     }
                     if (!inline) {
                       return <CodeBlock language="text" code={String(children).replace(/\n$/, '')} />;
@@ -142,6 +195,16 @@ export default function MessageBubble({ message, index }) {
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   {copied ? <Check size={11} /> : <Copy size={11} />}
+                </button>
+                <button
+                  onClick={() => onReply && onReply(message)}
+                  className="p-1.5 rounded-lg transition-all"
+                  title="Reply"
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
                 </button>
                 <button
                   onClick={handleTTS}
@@ -180,5 +243,9 @@ export default function MessageBubble({ message, index }) {
         </div>
       </div>
     </div>
+      {lightboxImage && (
+        <ImageLightbox src={lightboxImage} onClose={() => setLightboxImage(null)} />
+      )}
+    </>
   );
 }

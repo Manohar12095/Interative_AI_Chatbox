@@ -1,8 +1,12 @@
+from pydantic import BaseModel, Field
 import requests
 import xml.etree.ElementTree as ET
 from langchain_core.tools import tool
 
-@tool
+class GetNewsSchema(BaseModel):
+    topic: str = Field(default="world", description="The topic for the get_news tool")
+
+@tool(args_schema=GetNewsSchema)
 def get_news(topic: str = "world") -> str:
     """Fetch latest news headlines for any topic."""
     try:

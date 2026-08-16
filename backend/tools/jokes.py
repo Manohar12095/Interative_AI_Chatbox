@@ -1,7 +1,11 @@
+from pydantic import BaseModel, Field
 import requests
 from langchain_core.tools import tool
 
-@tool
+class GetJokeOrTriviaSchema(BaseModel):
+    category: str = Field(default="general", description="The category for the get_joke_or_trivia tool")
+
+@tool(args_schema=GetJokeOrTriviaSchema)
 def get_joke_or_trivia(category: str = "general") -> str:
     """Get a random joke or fun trivia fact. Categories: programming, science, math, general."""
     try:

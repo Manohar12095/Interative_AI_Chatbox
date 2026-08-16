@@ -1,7 +1,11 @@
+from pydantic import BaseModel, Field
 import requests
 from langchain_core.tools import tool
 
-@tool
+class GetStockPriceSchema(BaseModel):
+    symbol: str = Field(..., description="The symbol for the get_stock_price tool")
+
+@tool(args_schema=GetStockPriceSchema)
 def get_stock_price(symbol: str) -> str:
     """Get current stock price and basic info for any ticker symbol."""
     try:

@@ -1,7 +1,11 @@
+from pydantic import BaseModel, Field
 import requests
 from langchain_core.tools import tool
 
-@tool
+class DefineWordSchema(BaseModel):
+    word: str = Field(..., description="The word for the define_word tool")
+
+@tool(args_schema=DefineWordSchema)
 def define_word(word: str) -> str:
     """Get the definition, synonyms, and usage of any English word."""
     try:

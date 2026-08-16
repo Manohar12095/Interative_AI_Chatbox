@@ -1,6 +1,10 @@
+from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 
-@tool
+class WikipediaSearchSchema(BaseModel):
+    topic: str = Field(..., description="The topic for the wikipedia_search tool")
+
+@tool(args_schema=WikipediaSearchSchema)
 def wikipedia_search(topic: str) -> str:
     """Get a detailed Wikipedia summary for any topic."""
     try:

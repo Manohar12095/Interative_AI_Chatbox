@@ -23,11 +23,14 @@ export default defineConfig({
       },
       '/upload': 'http://localhost:8000',
       '/voice': 'http://localhost:8000',
+      '/tts': 'http://localhost:8000',
       '/sessions': 'http://localhost:8000',
       '/tools': 'http://localhost:8000',
       '/export': 'http://localhost:8000',
+      '/config': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
       '/static': 'http://localhost:8000',
+      '/api': 'http://localhost:8000',
     }
   }
 })

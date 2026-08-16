@@ -1,7 +1,13 @@
+from pydantic import BaseModel, Field
 import requests
 from langchain_core.tools import tool
 
-@tool
+class ConvertCurrencySchema(BaseModel):
+    amount: float = Field(..., description="The amount for the convert_currency tool")
+    from_currency: str = Field(..., description="The from_currency for the convert_currency tool")
+    to_currency: str = Field(..., description="The to_currency for the convert_currency tool")
+
+@tool(args_schema=ConvertCurrencySchema)
 def convert_currency(amount: float, from_currency: str, to_currency: str) -> str:
     """Convert between currencies using live exchange rates."""
     try:

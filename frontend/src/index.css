@@ -4,12 +4,18 @@
 
 @import "tailwindcss";
 
+/* Fix for select options text visibility on Windows */
+select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
 /* ═══════════════════════════════════════════
-   RAHONAM Design System — Premium Redesign
+   IN NET CREATION Design System — Premium Redesign
    ═══════════════════════════════════════════ */
 
 :root, [data-theme="dark"] {
-  /* RAHONAM Premium Dark Theme */
+  /* IN NET CREATION Premium Dark Theme */
   --bg-primary: #080C14;
   --bg-secondary: #0A0F1A;
   --bg-tertiary: #0F1623;
@@ -482,38 +488,100 @@
 }
 
 /* ── Markdown Content ─────────────────────── */
-.message-content h1, .message-content h2, .message-content h3 {
-  font-family: var(--font-heading);
-  margin-top: 16px;
-  margin-bottom: 8px;
+.message-content {
+  counter-reset: h2-counter;
 }
 
-.message-content p { margin-bottom: 8px; line-height: 1.7; }
-.message-content ul, .message-content ol { padding-left: 20px; margin-bottom: 8px; }
-.message-content li { margin-bottom: 4px; }
+.message-content h1, .message-content h2, .message-content h3 {
+  font-family: var(--font-heading);
+  margin-top: 20px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.message-content h1 {
+  font-size: 1.5em;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 6px;
+}
+
+.message-content h2 {
+  font-size: 1.2em;
+  counter-increment: h2-counter;
+  counter-reset: h3-counter;
+}
+.message-content h2::before {
+  content: counter(h2-counter) ". ";
+  color: var(--accent);
+  margin-right: 4px;
+}
+
+.message-content h3 {
+  font-size: 1.1em;
+  counter-increment: h3-counter;
+}
+.message-content h3::before {
+  content: counter(h2-counter) "." counter(h3-counter) " ";
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.message-content p { margin-bottom: 12px; line-height: 1.7; }
+.message-content ul, .message-content ol { padding-left: 20px; margin-bottom: 12px; }
+.message-content li { margin-bottom: 6px; }
 .message-content blockquote {
   border-left: 3px solid var(--accent);
-  padding-left: 12px;
-  margin: 8px 0;
+  padding-left: 14px;
+  margin: 12px 0;
   color: var(--text-secondary);
+  background: var(--bg-card-hover);
+  border-radius: 0 8px 8px 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
+
+/* Tables */
 .message-content table {
   width: 100%;
-  border-collapse: collapse;
-  margin: 12px 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 16px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
 }
 .message-content th, .message-content td {
-  border: 1px solid var(--border-glass);
-  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-glass);
+  border-right: 1px solid var(--border-glass);
+  padding: 10px 14px;
   text-align: left;
+  font-size: 13px;
+}
+.message-content th:last-child, .message-content td:last-child {
+  border-right: none;
+}
+.message-content tr:last-child td {
+  border-bottom: none;
 }
 .message-content th {
-  background: var(--bg-card);
+  background: rgba(0, 198, 255, 0.08);
   font-weight: 600;
+  color: var(--accent);
 }
+.message-content tr:hover td {
+  background: var(--bg-card-hover);
+}
+
 .message-content a {
   color: var(--accent);
-  text-decoration: underline;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent);
+  transition: all 0.2s ease;
+}
+.message-content a:hover {
+  color: var(--accent-hover);
+  border-bottom-style: solid;
 }
 
 /* ── Toggle Switch ────────────────────────── */
@@ -664,7 +732,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   ── RAHONAM Login Page — Space-Tech Noir ──────────────────
+   ── IN NET CREATION Login Page — Space-Tech Noir ──────────────────
    ══════════════════════════════════════════════════════════════ */
 
 /* ── Fonts ───────────────────────────────── */

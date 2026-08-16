@@ -22,3 +22,9 @@ gTTS>=2.5.0
 pytz>=2024.1
 langchain-openai>=0.1.0
 langchain-google-genai>=1.0.0
+langchain-ollama>=0.1.0
+reportlab>=4.0.0
+faster-whisper
+pyttsx3
+edge-tts
+youtube-transcript-api>=0.6.0

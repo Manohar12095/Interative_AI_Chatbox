@@ -12,7 +12,9 @@ from config import GROQ_API_KEY, VISION_MODEL, UPLOADS_DIR
 
 
 def analyse_image(image_path: str) -> str:
-    """Describe an uploaded image using Groq vision or fallback to PIL info."""
+    """Describe an uploaded image using Groq vision (qwen/qwen3.6-27b) with PIL fallback."""
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         from langchain_groq import ChatGroq
         from langchain_core.messages import HumanMessage
@@ -21,19 +23,28 @@ def analyse_image(image_path: str) -> str:
             b64 = base64.b64encode(f.read()).decode("utf-8")
         ext = Path(image_path).suffix.lower().replace('.', '')
         mime = {'jpg': 'jpeg', 'jpeg': 'jpeg', 'png': 'png', 'gif': 'gif', 'webp': 'webp'}.get(ext, 'jpeg')
+
+        logger.info(f"Analysing image with vision model: {VISION_MODEL}")
         vision_llm = ChatGroq(api_key=GROQ_API_KEY, model=VISION_MODEL)
         msg = HumanMessage(content=[
             {"type": "image_url", "image_url": {"url": f"data:image/{mime};base64,{b64}"}},
-            {"type": "text", "text": "Analyse this image in detail. Describe objects, text, colours, context, and mood."}
+            {"type": "text", "text": "Analyse this image in detail. Describe what you see: objects, people, text, colours, spatial relationships, context, and overall mood."}
         ])
         response = vision_llm.invoke([msg])
         return response.content
-    except Exception as e:
+    except Exception as llm_err:
+        # Log the real error server-side so it can be diagnosed
+        logger.error(f"Vision LLM call failed (model={VISION_MODEL}): {llm_err}")
+        # Graceful degradation — try to at least return PIL metadata
         try:
             img = Image.open(image_path)
-            return f"Image loaded (vision model unavailable: {e})\nSize: {img.size}, Mode: {img.mode}, Format: {img.format}"
-        except:
-            return f"Image analysis error: {e}"
+            return (
+                f"⚠️ Vision analysis temporarily unavailable (model error logged server-side).\n"
+                f"Image info — Size: {img.size[0]}×{img.size[1]}px, Mode: {img.mode}, Format: {img.format}"
+            )
+        except Exception as pil_err:
+            logger.error(f"PIL fallback also failed: {pil_err}")
+            return f"Image analysis error: {llm_err}"
 
 
 def analyse_audio(audio_path: str) -> str:

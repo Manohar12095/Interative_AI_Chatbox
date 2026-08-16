@@ -4,7 +4,7 @@ Session Manager — JSON-file-based session persistence.
 import json
 import uuid
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from config import SESSIONS_DIR
 
 
@@ -13,10 +13,12 @@ def _session_path(session_id: str) -> Path:
 
 
 def _default_session(session_id: str, name: str = "New Chat") -> dict:
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.now(timezone.utc).isoformat()
     return {
         "id": session_id,
         "name": name,
+        "title": None,        # AI-generated title; None until auto-titled
+        "auto_titled": False,  # True once we've run auto-titling
         "created_at": now,
         "updated_at": now,
         "messages": [],
@@ -41,7 +43,7 @@ def load_session(session_id: str) -> dict:
 
 
 def save_session(session: dict):
-    session["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    session["updated_at"] = datetime.now(timezone.utc).isoformat()
     path = _session_path(session["id"])
     with open(path, "w", encoding="utf-8") as f:
         json.dump(session, f, indent=2, ensure_ascii=False)
@@ -85,9 +87,24 @@ def rename_session(session_id: str, new_name: str) -> dict | None:
     session = load_session(session_id)
     if session:
         session["name"] = new_name
+        session["auto_titled"] = True  # Treat user renames as "titled" — never auto-overwrite
         save_session(session)
         return session
     return None
+
+
+def set_auto_title(session_id: str, title: str) -> dict | None:
+    """Set an AI-generated title on a session, but only if not already user-renamed."""
+    session = load_session(session_id)
+    if not session:
+        return None
+    # Only auto-title sessions still on the default name
+    if not session.get("auto_titled", False) and session.get("name", "New Chat") == "New Chat":
+        session["name"] = title
+        session["title"] = title
+        session["auto_titled"] = True
+        save_session(session)
+    return session
 
 
 def add_message(session_id: str, role: str, content: str,
@@ -96,7 +113,7 @@ def add_message(session_id: str, role: str, content: str,
     session["messages"].append({
         "role": role,
         "content": content,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "tool_calls": tool_calls or [],
         "tool_results": tool_results or []
     })

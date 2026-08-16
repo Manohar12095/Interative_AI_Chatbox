@@ -7,7 +7,8 @@ const DEFAULT_SETTINGS = {
   provider: 'groq',
   connection_mode: 'serverless',
   api_key: '',
-  model: 'llama-3.3-70b-versatile'
+  model: 'llama-3.1-8b-instant',
+  tts_voice: 'en-GB-MaisieNeural'
 };
 
 export function useSettings(session) {
@@ -16,12 +17,11 @@ export function useSettings(session) {
 
   // Load settings on mount or session change
   useEffect(() => {
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
     const loadSettings = async () => {
+      if (!session?.user?.id) {
+        setLoading(false);
+        return;
+      }
       try {
         if (session.user.id === 'guest' || session.user.id?.startsWith('local_') || session.user.isLocal) {
           const localSettings = JSON.parse(localStorage.getItem(`apex_settings_${session.user.id}`) || 'null');
@@ -46,7 +46,8 @@ export function useSettings(session) {
             provider: data.provider || 'groq',
             connection_mode: data.connection_mode || 'serverless',
             api_key: data.api_key || '',
-            model: data.model || 'llama-3.3-70b-versatile'
+            model: data.model || 'llama-3.1-8b-instant',
+            tts_voice: data.tts_voice || 'en-GB-MaisieNeural'
           });
         } else {
           // No settings exist yet, insert defaults

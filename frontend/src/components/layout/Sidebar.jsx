@@ -90,7 +90,7 @@ export default function Sidebar({
           />
           <img
             src="/logo.png"
-            alt="RAHONAM"
+            alt="IN NET CREATION"
             className="relative w-9 h-9 rounded-2xl object-contain"
           />
         </div>
@@ -99,7 +99,7 @@ export default function Sidebar({
             className="text-[17px] font-bold tracking-tight gradient-text leading-none mb-0.5"
             style={{ fontFamily: 'var(--font-heading)' }}
           >
-            RAHONAM
+            IN NET CREATION
           </h1>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} />
@@ -325,7 +325,7 @@ export default function Sidebar({
               <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                 {search
                   ? `No chats matching "${search}"`
-                  : 'Click "New Conversation" above to begin chatting with RAHONAM AI'}
+                  : 'Click "New Conversation" above to begin chatting with IN NET CREATION AI'}
               </p>
             </div>
             {!search && (
@@ -395,6 +395,11 @@ export default function Sidebar({
             </span>
             <span className="capitalize">{settings.theme}</span>
           </button>
+        </div>
+
+        {/* Created By Credit */}
+        <div className="px-4 text-center pb-3">
+          <p className="text-[9px] uppercase tracking-[1px]" style={{ color: 'var(--text-muted)' }}>Created By Manohar_S</p>
         </div>
 
         {/* User profile card */}

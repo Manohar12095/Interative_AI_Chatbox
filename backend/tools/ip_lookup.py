@@ -1,7 +1,11 @@
+from pydantic import BaseModel, Field
 import requests
 from langchain_core.tools import tool
 
-@tool
+class GetIpInfoSchema(BaseModel):
+    ip_address: str = Field(default="", description="The ip_address for the get_ip_info tool")
+
+@tool(args_schema=GetIpInfoSchema)
 def get_ip_info(ip_address: str = "") -> str:
     """Get location and ISP info for an IP address (or your own IP if blank)."""
     try:

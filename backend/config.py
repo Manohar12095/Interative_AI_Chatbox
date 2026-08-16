@@ -13,8 +13,12 @@ load_dotenv(env_path)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 VISION_API_KEY = os.getenv("VISION_API_KEY", "")
 
-LLAMA_MODEL = "llama-3.3-70b-versatile"
-VISION_MODEL = "llava-v1.5-7b-4096-preview"
+# Text model — override via GROQ_MODEL env var
+LLAMA_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
+# Vision model — override via GROQ_VISION_MODEL env var
+# qwen/qwen3.6-27b is the current active Groq vision model (as of 2026)
+VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.6-27b")
 
 # Paths
 BACKEND_DIR = Path(__file__).resolve().parent

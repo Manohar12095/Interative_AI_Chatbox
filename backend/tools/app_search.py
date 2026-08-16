@@ -1,9 +1,13 @@
+from pydantic import BaseModel, Field
 import requests
 import urllib.parse
 from bs4 import BeautifulSoup
 from langchain_core.tools import tool
 
-@tool
+class SearchAppLinksSchema(BaseModel):
+    app_name: str = Field(..., description="The app_name for the search_app_links tool")
+
+@tool(args_schema=SearchAppLinksSchema)
 def search_app_links(app_name: str) -> str:
     """Search for an app and return its official website, App Store, and Google Play Store links."""
     results = []

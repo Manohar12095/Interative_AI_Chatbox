@@ -53,9 +53,9 @@ export default function Login({ onAuthSuccess }) {
 
       <div className="relative z-10 w-full max-w-md p-8 rounded-2xl glass-card mx-4 border border-white/10 shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="RAHONAM" className="w-20 h-20 mx-auto mb-4 rounded-2xl object-contain" />
+          <img src="/logo.png" alt="IN NET CREATION" className="w-20 h-20 mx-auto mb-4 rounded-2xl object-contain" />
           <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 font-heading">
-            RAHONAM
+            IN NET CREATION
           </h1>
           <p className="text-gray-500 text-xs tracking-widest uppercase mt-1">Reversed Creation</p>
           <p className="text-gray-400 mt-3 text-sm">

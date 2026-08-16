@@ -1,7 +1,11 @@
+from pydantic import BaseModel, Field
 import requests
 from langchain_core.tools import tool
 
-@tool
+class GetWeatherSchema(BaseModel):
+    city: str = Field(..., description="The city for the get_weather tool")
+
+@tool(args_schema=GetWeatherSchema)
 def get_weather(city: str) -> str:
     """Get current real-time weather for any city worldwide."""
     try:

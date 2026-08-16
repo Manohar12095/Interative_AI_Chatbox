@@ -1,15 +1,28 @@
-import { useState } from 'react';
-import { Menu, PanelRightOpen, PanelRightClose, Trash2, Download, Edit3, Check, Zap, ChevronDown } from 'lucide-react';
-import { TOOL_DEFINITIONS } from '../../utils/constants';
+import { useState, useRef, useEffect } from 'react';
+import { Menu, Trash2, Download, Edit3, Check, Settings, Zap, ToggleLeft, ToggleRight, X, Target, ChevronDown, ChevronRight } from 'lucide-react';
+import { TOOL_DEFINITIONS, TOPIC_CATEGORIES } from '../../utils/constants';
 
 export default function TopBar({
-  sessionName, onRenameSession, enabledTools,
-  onClearMemory, onExport, onToggleSidebar, onToggleTools,
-  sidebarOpen, toolsPanelOpen
+  sessionName, onRenameSession, enabledTools, onToggleTool,
+  onClearMemory, onExport, onToggleSidebar, onOpenSettings,
+  sidebarOpen
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(sessionName);
-  const [showAllTools, setShowAllTools] = useState(false);
+  const [showToolsPopover, setShowToolsPopover] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [titleAnimating, setTitleAnimating] = useState(false);
+  const prevNameRef = useRef(sessionName);
+
+  // Animate when the session name changes (auto-title arriving)
+  useEffect(() => {
+    if (prevNameRef.current !== sessionName) {
+      setTitleAnimating(true);
+      const t = setTimeout(() => setTitleAnimating(false), 600);
+      prevNameRef.current = sessionName;
+      return () => clearTimeout(t);
+    }
+  }, [sessionName]);
 
   const startEditing = () => {
     setEditName(sessionName);
@@ -21,9 +34,8 @@ export default function TopBar({
     setIsEditing(false);
   };
 
-  const activeTools = TOOL_DEFINITIONS.filter(t => enabledTools.includes(t.id));
-  const visibleTools = activeTools.slice(0, 5);
-  const hiddenCount = activeTools.length - 5;
+  const activeCount = enabledTools?.length || 0;
+  const allEnabled = activeCount === TOOL_DEFINITIONS.length;
 
   return (
     <div
@@ -34,7 +46,7 @@ export default function TopBar({
         borderBottom: '1px solid var(--border-subtle)',
       }}
     >
-      {/* Hamburger — shown when sidebar closed */}
+      {/* Hamburger */}
       {!sidebarOpen && (
         <button
           onClick={onToggleSidebar}
@@ -71,8 +83,14 @@ export default function TopBar({
         ) : (
           <button onClick={startEditing} className="flex items-center gap-2 group min-w-0" title="Click to rename">
             <h2
-              className="text-[14px] font-semibold truncate"
-              style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}
+              className="text-[14px] font-semibold truncate transition-all"
+              style={{
+                fontFamily: 'var(--font-heading)',
+                color: 'var(--text-primary)',
+                opacity: titleAnimating ? 0 : 1,
+                transform: titleAnimating ? 'translateY(-4px)' : 'translateY(0)',
+                transition: 'opacity 0.3s ease, transform 0.3s ease',
+              }}
             >
               {sessionName}
             </h2>
@@ -81,101 +99,130 @@ export default function TopBar({
         )}
       </div>
 
-      {/* Tool pills — center, hidden on small screens */}
-      <div className="hidden lg:flex items-center gap-1 overflow-x-auto max-w-[340px] no-scrollbar flex-shrink-0">
-        {visibleTools.map(t => (
-          <span
-            key={t.id}
-            className="flex items-center gap-1 whitespace-nowrap"
-            style={{
-              height: '22px',
-              padding: '0 8px',
-              borderRadius: '999px',
-              background: 'var(--brand-primary-light)',
-              border: '1px solid var(--border-glass)',
-              color: 'var(--accent)',
-              fontSize: '10px',
-              fontWeight: 500,
-            }}
-          >
-            <span
-              style={{
-                width: '5px', height: '5px',
-                borderRadius: '50%', background: 'var(--accent)',
-                display: 'inline-block', flexShrink: 0,
-              }}
-            />
-            {t.name}
-          </span>
-        ))}
-        {hiddenCount > 0 && (
-          <button
-            className="flex items-center gap-1 whitespace-nowrap transition-all"
-            style={{
-              height: '22px',
-              padding: '0 8px',
-              borderRadius: '999px',
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-muted)',
-              fontSize: '10px',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-            onClick={() => setShowAllTools(!showAllTools)}
-          >
-            +{hiddenCount}
-            <ChevronDown size={10} style={{ transform: showAllTools ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-          </button>
-        )}
-      </div>
-
-      {/* All tools tooltip */}
-      {showAllTools && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowAllTools(false)} />
-          <div
-            className="absolute z-50 p-3 rounded-xl shadow-2xl"
-            style={{
-              right: '60px',
-              top: '58px',
-              background: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-subtle)',
-              minWidth: '220px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
-          >
-            <div className="flex items-center gap-1.5 mb-2.5">
-              <Zap size={11} style={{ color: 'var(--accent)' }} />
-              <p className="text-[10px] uppercase font-semibold tracking-wider" style={{ color: 'var(--text-muted)' }}>Active Tools</p>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {activeTools.map(t => (
-                <span
-                  key={t.id}
-                  className="flex items-center gap-1"
-                  style={{
-                    height: '22px',
-                    padding: '0 8px',
-                    borderRadius: '999px',
-                    background: 'var(--brand-primary-light)',
-                    border: '1px solid var(--border-glass)',
-                    color: 'var(--accent)',
-                    fontSize: '10px',
-                    fontWeight: 500,
-                  }}
-                >
-                  <span style={{ fontSize: '10px' }}>{t.icon}</span>
-                  {t.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
       {/* Right Actions */}
       <div className="flex items-center gap-0.5 flex-shrink-0">
+
+        {/* Tools popover button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowToolsPopover(v => !v)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+            title="Toggle agent tools"
+            style={{
+              color: showToolsPopover ? 'var(--accent)' : 'var(--text-muted)',
+              background: showToolsPopover ? 'var(--brand-primary-light)' : 'transparent',
+              border: showToolsPopover ? '1px solid var(--border-glass)' : '1px solid transparent',
+            }}
+            onMouseEnter={e => { if (!showToolsPopover) { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}}
+            onMouseLeave={e => { if (!showToolsPopover) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}}
+          >
+            <Zap size={13} />
+            <span className="hidden sm:inline">Tools</span>
+            {activeCount > 0 && (
+              <span
+                className="text-[9px] font-bold px-1 py-0.5 rounded-full"
+                style={{ background: 'var(--accent)', color: '#fff', minWidth: '16px', textAlign: 'center' }}
+              >
+                {activeCount}
+              </span>
+            )}
+          </button>
+
+          {/* Tools Popover */}
+          {showToolsPopover && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowToolsPopover(false)} />
+              <div
+                className="absolute z-50 rounded-2xl shadow-2xl"
+                style={{
+                  right: 0,
+                  top: 'calc(100% + 8px)',
+                  width: '300px',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-subtle)',
+                  boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Popover header */}
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div className="flex items-center gap-2">
+                    <Zap size={13} style={{ color: 'var(--accent)' }} />
+                    <span className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>Agent Tools</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: 'var(--brand-primary-light)', color: 'var(--accent)' }}>
+                      {activeCount}/{TOOL_DEFINITIONS.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onToggleTool && TOOL_DEFINITIONS.forEach(t => {
+                        const shouldEnable = !allEnabled;
+                        const isEnabled = enabledTools?.includes(t.id);
+                        if (shouldEnable && !isEnabled) onToggleTool(t.id);
+                        else if (!shouldEnable && isEnabled) onToggleTool(t.id);
+                      })}
+                      className="text-[10px] font-medium px-2 py-1 rounded-lg transition-all"
+                      style={{ color: 'var(--accent)', background: 'var(--brand-primary-light)' }}
+                    >
+                      {allEnabled ? 'All Off' : 'All On'}
+                    </button>
+                    <button onClick={() => setShowToolsPopover(false)} style={{ color: 'var(--text-muted)' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick tool toggles */}
+                <div className="p-3 max-h-[320px] overflow-y-auto no-scrollbar">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {TOOL_DEFINITIONS.map(tool => {
+                      const enabled = enabledTools?.includes(tool.id);
+                      return (
+                        <button
+                          key={tool.id}
+                          onClick={() => onToggleTool?.(tool.id)}
+                          className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all"
+                          style={{
+                            background: enabled ? 'var(--brand-primary-light)' : 'var(--bg-card)',
+                            border: enabled ? '1px solid var(--border-glass)' : '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          <span className="text-[14px]">{tool.icon}</span>
+                          <span className="text-[11px] font-medium truncate flex-1" style={{ color: enabled ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                            {tool.name}
+                          </span>
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: enabled ? 'var(--accent)' : 'var(--border-subtle)' }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Footer link to full settings */}
+                <div
+                  className="px-4 py-2.5 flex items-center justify-between"
+                  style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-primary)' }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--success)' }} />
+                    <span className="text-[10px]" style={{ color: 'var(--success)' }}>{activeCount} active</span>
+                  </div>
+                  <button
+                    onClick={() => { setShowToolsPopover(false); onOpenSettings?.('tools'); }}
+                    className="text-[10px] font-medium transition-all"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    Manage in Settings →
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         <button
           onClick={onClearMemory}
           className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
@@ -186,6 +233,7 @@ export default function TopBar({
         >
           <Trash2 size={15} />
         </button>
+
         <button
           onClick={onExport}
           className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg transition-all"
@@ -197,21 +245,17 @@ export default function TopBar({
           <Download size={15} />
         </button>
 
-        {/* Divider */}
         <div className="w-px h-5 mx-1" style={{ background: 'var(--border-subtle)' }} />
 
         <button
-          onClick={onToggleTools}
+          onClick={() => onOpenSettings?.('general')}
           className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
-          title={toolsPanelOpen ? 'Hide tools panel' : 'Show tools panel'}
-          style={{
-            color: toolsPanelOpen ? 'var(--accent)' : 'var(--text-muted)',
-            background: toolsPanelOpen ? 'var(--brand-primary-light)' : 'transparent',
-          }}
-          onMouseEnter={e => { if (!toolsPanelOpen) { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
-          onMouseLeave={e => { if (!toolsPanelOpen) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; } }}
+          title="Settings"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
         >
-          {toolsPanelOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
+          <Settings size={15} />
         </button>
       </div>
     </div>

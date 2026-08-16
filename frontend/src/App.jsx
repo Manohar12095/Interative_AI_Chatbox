@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
-import ToolsPanel from './components/layout/ToolsPanel';
 import ChatArea from './components/chat/ChatArea';
 import InputBar from './components/chat/InputBar';
-import OnboardingModal from './components/modals/OnboardingModal';
+import AiModeOverlay from './components/chat/AiModeOverlay';
+import ApiKeyGateModal from './components/modals/ApiKeyGateModal';
 import SettingsPanel from './components/modals/SettingsPanel';
 import ExportModal from './components/modals/ExportModal';
 import ProfilePanel from './components/modals/ProfilePanel';
@@ -16,7 +16,7 @@ import { useToast } from './hooks/useToast';
 import { TOOL_DEFINITIONS } from './utils/constants';
 import {
   fetchSessions, createSession, deleteSession, renameSession,
-  getSession, clearSession, streamChat, uploadFile, saveMessage
+  getSession, clearSession, streamChat, uploadFile, saveMessage, checkBackendHealth, fetchConfig
 } from './utils/api';
 
 export default function App() {
@@ -42,10 +42,11 @@ export default function App() {
 
   // Panels
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
-  const [toolsPanelOpen, setToolsPanelOpen] = useState(window.innerWidth > 1200);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState('general');
   const [exportOpen, setExportOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [aiModeOpen, setAiModeOpen] = useState(false);
 
   // Topics
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -54,24 +55,22 @@ export default function App() {
   // Initialized lazily once `session` is available
   const [settingsReady, setSettingsReady] = useState(false);
 
-  // Onboarding
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => !localStorage.getItem('apex-onboarded')
-  );
+  // API Key Gate
+  const [dismissedApiGate, setDismissedApiGate] = useState(false);
 
   // File attachment
-  const [attachedFile, setAttachedFile] = useState(null);
-  const [fileAnalysis, setFileAnalysis] = useState(null);
+  const [backendHealth, setBackendHealth] = useState(true);
+  const [backendConfig, setBackendConfig] = useState(null);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [fileAnalyses, setFileAnalyses] = useState([]);
+  
+  // Reply State
+  const [replyTo, setReplyTo] = useState(null);
 
   // Cloud settings hook — depends on session being set
   const { settings, updateSetting, loading: settingsLoading } = useSettings(session);
 
-  // Auto-open settings if user is logged in but has no API key setup
-  useEffect(() => {
-    if (!settingsLoading && session && !settings.api_key) {
-      setSettingsOpen(true);
-    }
-  }, [settingsLoading, session, settings.api_key]);
+  // Removed auto-open settings effect to use ApiKeyGateModal instead
 
   // Load sessions and auth on mount
   useEffect(() => {
@@ -116,6 +115,15 @@ export default function App() {
   }, []);
 
   const loadSessions = async (userId) => {
+    const initBackend = async () => {
+      const isHealthy = await checkBackendHealth();
+      setBackendHealth(isHealthy);
+      if (isHealthy) {
+        const config = await fetchConfig();
+        setBackendConfig(config);
+      }
+    };
+    initBackend();
     if (!userId) return;
     try {
       const data = await fetchSessions();
@@ -187,36 +195,90 @@ export default function App() {
     }
   };
 
-  const handleFileAttach = async (file) => {
+  const handleFileAttach = async (files) => {
     try {
-      addToast('Analysing file...', 'info');
-      const result = await uploadFile(file);
-      setAttachedFile({ name: file.name, size: file.size, type: file.type });
-      setFileAnalysis(result.analysis);
-      addToast('File ready', 'success');
+      addToast(`Uploading ${files.length} file(s)...`, 'info');
+      
+      const startIndex = attachedFiles.length;
+      
+      const newAttached = files.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        progress: 0,
+        previewUrl: file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null
+      }));
+      
+      setAttachedFiles(prev => [...prev, ...newAttached]);
+      const newAnalyses = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const stateIndex = startIndex + i;
+        
+        const result = await uploadFile(file, (progress) => {
+          setAttachedFiles(prev => {
+            const next = [...prev];
+            if (next[stateIndex]) next[stateIndex] = { ...next[stateIndex], progress };
+            return next;
+          });
+        });
+        
+        setAttachedFiles(prev => {
+          const next = [...prev];
+          if (next[stateIndex]) {
+            next[stateIndex] = { 
+              ...next[stateIndex], 
+              progress: 100, 
+              url: result.url,
+              content: result.content
+            };
+          }
+          return next;
+        });
+        
+        newAnalyses.push(`[File: ${file.name}]\n${result.analysis}`);
+      }
+      
+      setFileAnalyses(prev => [...prev, ...newAnalyses]);
+      addToast('Files ready', 'success');
     } catch {
-      addToast('Failed to upload file', 'error');
+      addToast('Failed to upload some files', 'error');
     }
   };
 
+  const handleRemoveFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+    setFileAnalyses(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = useCallback(async (text) => {
-    if (!text.trim() && !fileAnalysis) return;
+    if (!text.trim() && fileAnalyses.length === 0) return;
+    
+    let messageContent = text;
+    if (replyTo) {
+      messageContent = `> Replying to: "${replyTo.content.substring(0, 100)}..."\n\n${text}`;
+      setReplyTo(null);
+    }
+    
     if (!activeSessionId) {
       try {
         const session = await createSession('New Chat');
         setSessions(prev => [{ ...session, message_count: 0 }, ...prev]);
         setActiveSessionId(session.id);
         setActiveSessionName(session.name);
-        await sendMessage(text, session.id);
+        await sendMessage(messageContent, session.id);
       } catch {
         addToast('Failed to start chat', 'error');
       }
       return;
     }
-    await sendMessage(text, activeSessionId);
-  }, [activeSessionId, enabledTools, settings.api_key, fileAnalysis, selectedTopic]);
+    await sendMessage(messageContent, activeSessionId);
+  }, [activeSessionId, enabledTools, settings.api_key, fileAnalyses, selectedTopic, replyTo]);
 
   const sendMessage = async (text, sessionId) => {
+    const currentAttachments = [...attachedFiles];
+
     // Add user message immediately to state
     const userMsg = {
       session_id: sessionId,
@@ -224,7 +286,8 @@ export default function App() {
       content: text || '[File uploaded]',
       timestamp: new Date().toISOString(),
       tool_calls: [],
-      tool_results: []
+      tool_results: [],
+      attachments: currentAttachments
     };
     setMessages(prev => [...prev, userMsg]);
     setIsStreaming(true);
@@ -262,10 +325,20 @@ export default function App() {
       apiKey: settings.api_key || undefined,
       provider: settings.provider || undefined,
       model: settings.model || undefined,
+      ollamaUrl: settings.ollama_url || undefined,
       connectionMode: settings.connection_mode || 'serverless',
-      fileContext: fileAnalysis || undefined,
+      fileContext: fileAnalyses.length > 0 ? fileAnalyses.join('\n\n') : undefined,
       topicContext: selectedTopic || undefined,
       history: messages.map(m => ({ role: m.role, content: m.content })),
+      onSessionTitle: (title, sid) => {
+        // Only update if the session hasn't been manually renamed
+        setSessions(prev => prev.map(s =>
+          s.id === sid && (s.name === 'New Chat' || !s.name) ? { ...s, name: title } : s
+        ));
+        if (sid === sessionId && (activeSessionName === 'New Chat' || !activeSessionName)) {
+          setActiveSessionName(title);
+        }
+      },
       onToken: (token) => {
         finalContent += token;
         setMessages(prev => {
@@ -353,16 +426,15 @@ export default function App() {
     });
 
     // Clear file attachment
-    setAttachedFile(null);
-    setFileAnalysis(null);
+    setAttachedFiles([]);
+    setFileAnalyses([]);
   };
 
-  const handleCompleteOnboarding = (key) => {
+  const handleCompleteApiGate = (key) => {
     if (key) {
       updateSetting('api_key', key);
     }
-    localStorage.setItem('apex-onboarded', 'true');
-    setShowOnboarding(false);
+    setDismissedApiGate(true);
     if (!activeSessionId) handleNewChat();
   };
 
@@ -396,7 +468,7 @@ export default function App() {
               localStorage.removeItem('apex_guest_user'); // Clean up guest session if real user logs in
             }
           } else {
-            const guestUser = { id: 'guest_' + Date.now(), email: 'guest@rahonam.ai', isLocal: true };
+            const guestUser = { id: 'guest_' + Date.now(), email: 'guest@innetcreation.ai', isLocal: true };
             localStorage.setItem('apex_guest_user', JSON.stringify(guestUser));
             setSession({ user: guestUser });
           }
@@ -411,11 +483,11 @@ export default function App() {
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden ${fontSizeClass}`} style={{ background: 'var(--bg-primary)' }}>
-      {/* Onboarding */}
-      {showOnboarding && (
-        <OnboardingModal
-          onComplete={handleCompleteOnboarding}
-          onSkip={() => { localStorage.setItem('apex-onboarded', 'true'); setShowOnboarding(false); if (!activeSessionId) handleNewChat(); }}
+      {/* API Key Gate */}
+      {(!settingsLoading && session && !settings.api_key && !backendConfig?.has_backend_api_key && !dismissedApiGate) && (
+        <ApiKeyGateModal
+          onComplete={handleCompleteApiGate}
+          onDismiss={() => { setDismissedApiGate(true); if (!activeSessionId) handleNewChat(); }}
         />
       )}
 
@@ -427,10 +499,6 @@ export default function App() {
         <div className="fixed inset-0 bg-black/50 z-40 transition-opacity animate-fade-in" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Mobile tools panel overlay */}
-      {toolsPanelOpen && window.innerWidth <= 768 && (
-        <div className="fixed inset-0 bg-black/50 z-40 transition-opacity animate-fade-in" onClick={() => setToolsPanelOpen(false)} />
-      )}
 
       {/* Left Sidebar */}
       <Sidebar
@@ -450,9 +518,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Area — flex-1 + min-w-0 ensures it fills all remaining space
-           between the sidebar and the tools panel, and shrinks/grows
-           smoothly as panels open / close.                              */}
+      {/* Main Area */}
       <div
         className="flex flex-col min-w-0 overflow-hidden"
         style={{ flex: '1 1 0%', transition: 'width 0.3s ease' }}
@@ -461,48 +527,37 @@ export default function App() {
           sessionName={activeSessionName}
           onRenameSession={(name) => activeSessionId && handleRenameSession(activeSessionId, name)}
           enabledTools={enabledTools}
+          onToggleTool={(id) => setEnabledTools(prev =>
+            prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+          )}
           onClearMemory={handleClearMemory}
           onExport={() => setExportOpen(true)}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          onToggleTools={() => setToolsPanelOpen(!toolsPanelOpen)}
+          onOpenSettings={(tab) => { setSettingsInitialTab(tab || 'general'); setSettingsOpen(true); }}
           sidebarOpen={sidebarOpen}
-          toolsPanelOpen={toolsPanelOpen}
         />
 
         <ChatArea
           messages={messages}
           isStreaming={isStreaming}
           onSuggestedPrompt={(text) => handleSend(text)}
+          onReply={(msg) => setReplyTo(msg)}
           sidebarOpen={sidebarOpen}
-          toolsPanelOpen={toolsPanelOpen}
         />
 
         <InputBar
           onSend={handleSend}
           isStreaming={isStreaming}
           onFileAttach={handleFileAttach}
-          attachedFile={attachedFile}
-          onRemoveFile={() => { setAttachedFile(null); setFileAnalysis(null); }}
+          attachedFiles={attachedFiles}
+          onRemoveFile={handleRemoveFile}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
           addToast={addToast}
+          onAiMode={() => setAiModeOpen(true)}
+          settings={settings}
         />
       </div>
-
-      {/* Right Tools Panel */}
-      <ToolsPanel
-        isOpen={toolsPanelOpen}
-        enabledTools={enabledTools}
-        selectedTopic={selectedTopic}
-        onSelectTopic={setSelectedTopic}
-        onToggleTool={(id) => {
-          setEnabledTools(prev =>
-            prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
-          );
-        }}
-        onToggleAll={(enabled) => {
-          setEnabledTools(enabled ? TOOL_DEFINITIONS.map(t => t.id) : []);
-        }}
-        onClose={() => setToolsPanelOpen(false)}
-      />
 
       {/* Settings Panel */}
       {settingsOpen && (
@@ -511,6 +566,27 @@ export default function App() {
           settings={settings}
           updateSetting={updateSetting}
           sessions={sessions}
+          backendConfig={backendConfig}
+          initialTab={settingsInitialTab}
+          enabledTools={enabledTools}
+          onToggleTool={(id) => setEnabledTools(prev =>
+            prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+          )}
+          onToggleAll={(enabled) => setEnabledTools(enabled ? TOOL_DEFINITIONS.map(t => t.id) : [])}
+          selectedTopic={selectedTopic}
+          onSelectTopic={setSelectedTopic}
+        />
+      )}
+
+      {/* AI Mode Overlay */}
+      {aiModeOpen && (
+        <AiModeOverlay
+          onClose={() => setAiModeOpen(false)}
+          onSend={handleSend}
+          isStreaming={isStreaming}
+          addToast={addToast}
+          settings={settings}
+          messages={messages}
         />
       )}
 

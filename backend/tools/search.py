@@ -1,8 +1,12 @@
+from pydantic import BaseModel, Field
 import requests
 from bs4 import BeautifulSoup
 from langchain_core.tools import tool
 
-@tool
+class WebSearchSchema(BaseModel):
+    query: str = Field(..., description="The query for the web_search tool")
+
+@tool(args_schema=WebSearchSchema)
 def web_search(query: str) -> str:
     """Search the internet for any topic and return top results."""
     try:
@@ -23,7 +27,10 @@ def web_search(query: str) -> str:
     except Exception as e:
         return f"Search error: {e}"
 
-@tool
+class BraveSearchSchema(BaseModel):
+    query: str = Field(..., description="The query for the brave_search tool")
+
+@tool(args_schema=BraveSearchSchema)
 def brave_search(query: str) -> str:
     """Search the web using Brave Search."""
     return web_search(query)
